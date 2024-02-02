@@ -669,7 +669,7 @@ def at_mark_as_sent(request, pk):
         txn.transaction_status = "Completed"
         txn.save()
         sms_headers = {
-            'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
+            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
             'Content-Type': 'application/json'
         }
 
@@ -678,7 +678,7 @@ def at_mark_as_sent(request, pk):
 
         sms_body = {
             'recipient': f"233{txn.user.phone}",
-            'sender_id': 'GH BAY',
+            'sender_id': 'BESTPLUG',
             'message': sms_message
         }
         try:
@@ -699,7 +699,7 @@ def bt_mark_as_sent(request, pk):
         txn.transaction_status = "Completed"
         txn.save()
         sms_headers = {
-            'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
+            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
             'Content-Type': 'application/json'
         }
 
@@ -708,7 +708,7 @@ def bt_mark_as_sent(request, pk):
 
         sms_body = {
             'recipient': f"233{txn.user.phone}",
-            'sender_id': 'GH BAY',
+            'sender_id': 'BESTPLUG',
             'message': sms_message
         }
         try:
@@ -729,7 +729,7 @@ def afa_mark_as_sent(request, pk):
         txn.transaction_status = "Completed"
         txn.save()
         sms_headers = {
-            'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
+            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
             'Content-Type': 'application/json'
         }
 
@@ -738,7 +738,7 @@ def afa_mark_as_sent(request, pk):
 
         sms_body = {
             'recipient': f"233{txn.user.phone}",
-            'sender_id': 'GH BAY',
+            'sender_id': 'BESTPLUG',
             'message': sms_message
         }
         response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
@@ -1024,7 +1024,7 @@ def hubtel_webhook(request):
                     print(data)
 
                     sms_headers = {
-                        'Authorization': 'Bearer 1136|LwSl79qyzTZ9kbcf9SpGGl1ThsY0Ujf7tcMxvPze',
+                        'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
                         'Content-Type': 'application/json'
                     }
 
@@ -1045,7 +1045,7 @@ def hubtel_webhook(request):
 
                             sms_body = {
                                 'recipient': f"233{user.phone}",
-                                'sender_id': 'Geosams',
+                                'sender_id': 'BESTPLUG',
                                 'message': sms_message
                             }
                             try:
