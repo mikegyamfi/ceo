@@ -656,8 +656,8 @@ def mark_as_sent(request, pk):
             'sender_id': 'BESTPLUG',
             'message': sms_message
         }
-        # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-        # print(response.text)
+        response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+        print(response.text)
         return redirect('mtn_admin')
 
 
@@ -812,8 +812,13 @@ def topup_info(request):
         print("hello world")
         print("Amount is " + amount)
 
+        try:
+            total_amount = float(amount) + (1.95 / 100) * float(amount)
+        except:
+            return redirect('topup-info')
+
         payload = json.dumps({
-            "totalAmount": amount,
+            "totalAmount": total_amount,
             "description": "Payment for Wallet Topup",
             "callbackUrl": "https://www.bestpluggh.com/hubtel_webhook",
             "returnUrl": "https://www.bestpluggh.com",
