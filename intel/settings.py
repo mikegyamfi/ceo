@@ -31,6 +31,7 @@ DEBUG = False
 ALLOWED_HOSTS = [
     'www.bestpluggh.com',
     'bestplug-ceoofwealth-lsnoo.ondigitalocean.app',
+    'bestplug-2adzs.ondigitalocean.app',
     '127.0.0.1'
 ]
 
