@@ -815,9 +815,9 @@ def topup_info(request):
         payload = json.dumps({
             "totalAmount": amount,
             "description": "Payment for Wallet Topup",
-            "callbackUrl": "https://www.bestplughgh.com/hubtel_webhook",
-            "returnUrl": "https://www.bestplughgh.com",
-            "cancellationUrl": "https://www.bestplughgh.com",
+            "callbackUrl": "https://www.bestpluggh.com/hubtel_webhook",
+            "returnUrl": "https://www.bestpluggh.com",
+            "cancellationUrl": "https://www.bestpluggh.com",
             "merchantAccountNumber": "2019779",
             "clientReference": new_payment.reference
         })
