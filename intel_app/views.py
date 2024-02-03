@@ -813,7 +813,7 @@ def topup_info(request):
         print("Amount is " + amount)
 
         try:
-            total_amount = float(amount) + (1.95 / 100) * float(amount)
+            total_amount = amount
         except:
             return redirect('topup-info')
 
