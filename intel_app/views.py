@@ -649,25 +649,41 @@ def mark_as_sent(request, pk, status):
     if request.user.is_staff and request.user.is_superuser:
         txn = models.MTNTransaction.objects.filter(id=pk).first()
         print(txn)
-        txn.transaction_status = "Completed"
-        txn.save()
-        sms_headers = {
-            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
-            'Content-Type': 'application/json'
-        }
+        if status == "Processing":
+            txn.transaction_status = "Processing"
+            txn.save()
+            messages.success(request, f"Transaction Processed")
+            return redirect('mtn_admin')
+        elif status == "Cancelled":
+            txn.transaction_status = "Cancelled"
+            txn.save()
+            messages.success(request, f"Transaction Cancelled")
+            return redirect('mtn_admin')
+        elif status == "Refunded":
+            txn.transaction_status = "Refunded"
+            txn.save()
+            messages.success(request, f"Transaction Refunded")
+            return redirect('mtn_admin')
+        else:
+            txn.transaction_status = "Completed"
+            txn.save()
+            sms_headers = {
+                'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                'Content-Type': 'application/json'
+            }
 
-        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-        sms_message = f"{txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
+            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+            sms_message = f"{txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
 
-        sms_body = {
-            'recipient': f"233{txn.bundle_number}",
-            'sender_id': 'BESTPLUG',
-            'message': sms_message
-        }
-        response1 = requests.get(
-            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
-        print(response1.text)
-        return redirect('mtn_admin')
+            sms_body = {
+                'recipient': f"233{txn.bundle_number}",
+                'sender_id': 'BESTPLUG',
+                'message': sms_message
+            }
+            response1 = requests.get(
+                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
+            print(response1.text)
+            return redirect('mtn_admin')
 
 
 @login_required(login_url='login')
