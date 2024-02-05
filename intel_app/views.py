@@ -657,7 +657,7 @@ def mark_as_sent(request, pk, status):
         }
 
         sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-        sms_message = f"Your account has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
+        sms_message = f"{txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
 
         sms_body = {
             'recipient': f"233{txn.bundle_number}",
@@ -665,7 +665,7 @@ def mark_as_sent(request, pk, status):
             'message': sms_message
         }
         response1 = requests.get(
-            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.bundle_number}&from=BESTPLUG&sms={sms_message}")
+            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
         print(response1.text)
         return redirect('mtn_admin')
 
@@ -708,7 +708,7 @@ def at_mark_as_sent(request, pk, status):
             }
             try:
                 response1 = requests.get(
-                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.bundle_number}&from=BESTPLUG&sms={sms_message}")
+                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
                 print(response1.text)
             except:
                 messages.success(request, f"Transaction Completed")
@@ -755,7 +755,7 @@ def bt_mark_as_sent(request, pk, status):
             }
             try:
                 response1 = requests.get(
-                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.bundle_number}&from=BESTPLUG&sms={sms_message}")
+                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
                 print(response1.text)
             except:
                 messages.success(request, f"Transaction Completed")
@@ -806,7 +806,7 @@ def afa_mark_as_sent(request, pk, status):
                 'message': sms_message
             }
             response1 = requests.get(
-                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.phone_number}&from=BESTPLUG&sms={sms_message}")
+                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
             print(response1.text)
             messages.success(request, f"Transaction Completed")
             return redirect('afa_admin')
