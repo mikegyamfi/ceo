@@ -73,26 +73,34 @@ def pay_with_wallet(request):
                 receiver_message = f"Your bundle purchase has been completed successfully. {bundle}MB has been credited to you by {request.user.phone}.\nReference: {reference}\n"
                 sms_message = f"Hello @{request.user.username}. Your bundle purchase has been completed successfully. {bundle}MB has been credited to {phone_number}.\nReference: {reference}\nCurrent Wallet Balance: {user.wallet}\nThank you for using BESTPLUG GH.\n\nThe BESTPLUG GH"
 
-                num_without_0 = phone_number[1:]
-                print(num_without_0)
-                receiver_body = {
-                    'recipient': f"233{num_without_0}",
-                    'sender_id': 'BESTPLUG',
-                    'message': receiver_message
-                }
+                # num_without_0 = phone_number[1:]
+                # print(num_without_0)
+                # receiver_body = {
+                #     'recipient': f"233{num_without_0}",
+                #     'sender_id': 'BESTPLUG',
+                #     'message': receiver_message
+                # }
+                #
+                # response = requests.request('POST', url=sms_url, params=receiver_body, headers=sms_headers)
+                # print(response.text)
+                #
+                # sms_body = {
+                #     'recipient': f"233{request.user.phone}",
+                #     'sender_id': 'BESTPLUG',
+                #     'message': sms_message
+                # }
+                #
+                # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+                #
+                # print(response.text)
 
-                response = requests.request('POST', url=sms_url, params=receiver_body, headers=sms_headers)
-                print(response.text)
+                response1 = requests.get(
+                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{request.user.phone}&from=BESTPLUG&sms={sms_message}")
+                print(response1.text)
 
-                sms_body = {
-                    'recipient': f"233{request.user.phone}",
-                    'sender_id': 'BESTPLUG',
-                    'message': sms_message
-                }
-
-                response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-
-                print(response.text)
+                response2 = requests.get(
+                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to={phone_number}&from=BESTPLUG&sms={receiver_message}")
+                print(response2.text)
 
                 return JsonResponse({'status': 'Transaction Completed Successfully', 'icon': 'success'})
             else:
@@ -637,7 +645,7 @@ def admin_afa_history(request):
 
 
 @login_required(login_url='login')
-def mark_as_sent(request, pk):
+def mark_as_sent(request, pk, status):
     if request.user.is_staff and request.user.is_superuser:
         txn = models.MTNTransaction.objects.filter(id=pk).first()
         print(txn)
@@ -656,95 +664,152 @@ def mark_as_sent(request, pk):
             'sender_id': 'BESTPLUG',
             'message': sms_message
         }
-        response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-        print(response.text)
+        response1 = requests.get(
+            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.bundle_number}&from=BESTPLUG&sms={sms_message}")
+        print(response1.text)
         return redirect('mtn_admin')
 
 
 @login_required(login_url='login')
-def at_mark_as_sent(request, pk):
+def at_mark_as_sent(request, pk, status):
     if request.user.is_staff and request.user.is_superuser:
         txn = models.IShareBundleTransaction.objects.filter(id=pk).first()
         print(txn)
-        txn.transaction_status = "Completed"
-        txn.save()
-        sms_headers = {
-            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
-            'Content-Type': 'application/json'
-        }
+        if status == "Processing":
+            txn.transaction_status = "Processing"
+            txn.save()
+            messages.success(request, f"Transaction Processed")
+            return redirect('at_admin')
+        elif status == "Cancelled":
+            txn.transaction_status = "Cancelled"
+            txn.save()
+            messages.success(request, f"Transaction Cancelled")
+            return redirect('at_admin')
+        elif status == "Refunded":
+            txn.transaction_status = "Refunded"
+            txn.save()
+            messages.success(request, f"Transaction Refunded")
+            return redirect('at_admin')
+        else:
+            txn.transaction_status = "Completed"
+            txn.save()
+            sms_headers = {
+                'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                'Content-Type': 'application/json'
+            }
 
-        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-        sms_message = f"Your AT transaction has been completed. {txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
+            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+            sms_message = f"Your AT transaction has been completed. {txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
 
-        sms_body = {
-            'recipient': f"233{txn.user.phone}",
-            'sender_id': 'BESTPLUG',
-            'message': sms_message
-        }
-        try:
-            response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-            print(response.text)
-        except:
+            sms_body = {
+                'recipient': f"233{txn.user.phone}",
+                'sender_id': 'BESTPLUG',
+                'message': sms_message
+            }
+            try:
+                response1 = requests.get(
+                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.bundle_number}&from=BESTPLUG&sms={sms_message}")
+                print(response1.text)
+            except:
+                messages.success(request, f"Transaction Completed")
+                return redirect('at_admin')
             messages.success(request, f"Transaction Completed")
             return redirect('at_admin')
-        messages.success(request, f"Transaction Completed")
-        return redirect('at_admin')
 
 
 @login_required(login_url='login')
-def bt_mark_as_sent(request, pk):
+def bt_mark_as_sent(request, pk, status):
     if request.user.is_staff and request.user.is_superuser:
         txn = models.BigTimeTransaction.objects.filter(id=pk).first()
         print(txn)
-        txn.transaction_status = "Completed"
-        txn.save()
-        sms_headers = {
-            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
-            'Content-Type': 'application/json'
-        }
+        if status == "Processing":
+            txn.transaction_status = "Processing"
+            txn.save()
+            messages.success(request, f"Transaction Processed")
+            return redirect('bt_admin')
+        elif status == "Cancelled":
+            txn.transaction_status = "Cancelled"
+            txn.save()
+            messages.success(request, f"Transaction Cancelled")
+            return redirect('bt_admin')
+        elif status == "Refunded":
+            txn.transaction_status = "Refunded"
+            txn.save()
+            messages.success(request, f"Transaction Refunded")
+            return redirect('bt_admin')
+        else:
+            txn.transaction_status = "Completed"
+            txn.save()
+            sms_headers = {
+                'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                'Content-Type': 'application/json'
+            }
 
-        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-        sms_message = f"Your AT BIG TIME transaction has been completed. {txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
+            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+            sms_message = f"Your AT BIG TIME transaction has been completed. {txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
 
-        sms_body = {
-            'recipient': f"233{txn.user.phone}",
-            'sender_id': 'BESTPLUG',
-            'message': sms_message
-        }
-        try:
-            response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-            print(response.text)
-        except:
+            sms_body = {
+                'recipient': f"233{txn.user.phone}",
+                'sender_id': 'BESTPLUG',
+                'message': sms_message
+            }
+            try:
+                response1 = requests.get(
+                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.bundle_number}&from=BESTPLUG&sms={sms_message}")
+                print(response1.text)
+            except:
+                messages.success(request, f"Transaction Completed")
+                return redirect('bt_admin')
             messages.success(request, f"Transaction Completed")
             return redirect('bt_admin')
-        messages.success(request, f"Transaction Completed")
-        return redirect('bt_admin')
 
 
 @login_required(login_url='login')
-def afa_mark_as_sent(request, pk):
+def afa_mark_as_sent(request, pk, status):
     if request.user.is_staff and request.user.is_superuser:
         txn = models.AFARegistration.objects.filter(id=pk).first()
         print(txn)
-        txn.transaction_status = "Completed"
-        txn.save()
-        sms_headers = {
-            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
-            'Content-Type': 'application/json'
-        }
+        if status == "Processing":
+            txn.transaction_status = "Processing"
+            txn.save()
+            messages.success(request, f"Transaction Processed")
+            return redirect('afa_admin')
+        elif status == "Cancelled":
+            txn.transaction_status = "Cancelled"
+            txn.save()
+            messages.success(request, f"Transaction Cancelled")
+            return redirect('afa_admin')
+        elif status == "Refunded":
+            txn.transaction_status = "Refunded"
+            txn.save()
+            messages.success(request, f"Transaction Refunded")
+            return redirect('afa_admin')
+        elif status == "Under Verification":
+            txn.transaction_status = "Under Verification"
+            txn.save()
+            messages.success(request, f"Transaction Under Verification")
+            return redirect('afa_admin')
+        else:
+            txn.transaction_status = "Completed"
+            txn.save()
+            sms_headers = {
+                'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                'Content-Type': 'application/json'
+            }
 
-        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-        sms_message = f"Your AFA Registration has been completed. {txn.phone_number} has been registered.\nTransaction Reference: {txn.reference}"
+            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+            sms_message = f"Your AFA Registration has been completed. {txn.phone_number} has been registered.\nTransaction Reference: {txn.reference}"
 
-        sms_body = {
-            'recipient': f"233{txn.user.phone}",
-            'sender_id': 'BESTPLUG',
-            'message': sms_message
-        }
-        response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-        print(response.text)
-        messages.success(request, f"Transaction Completed")
-        return redirect('afa_admin')
+            sms_body = {
+                'recipient': f"233{txn.user.phone}",
+                'sender_id': 'BESTPLUG',
+                'message': sms_message
+            }
+            response1 = requests.get(
+                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.phone_number}&from=BESTPLUG&sms={sms_message}")
+            print(response1.text)
+            messages.success(request, f"Transaction Completed")
+            return redirect('afa_admin')
 
 
 def credit_user(request):
@@ -896,8 +961,9 @@ def credit_user_from_list(request, reference):
             'message': sms_message
         }
         try:
-            response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-            print(response.text)
+            response1 = requests.get(
+                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{custom_user.phone}&from=BESTPLUG&sms={sms_message}")
+            print(response1.text)
         except:
             pass
         messages.success(request, f"{user} has been credited with {amount}")
@@ -1163,6 +1229,9 @@ def hubtel_webhook(request):
                         status=True,
                     )
                     new_topup.save()
+                    response1 = requests.get(
+                        f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{user.phone}&from=BESTPLUG&sms=Your Bestplug wallet has been credited with {amount}. Thank You.")
+                    print(response1.text)
                     return JsonResponse({'status': "Wallet Credited"}, status=200)
                 else:
                     print("no type found")

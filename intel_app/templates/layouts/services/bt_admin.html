@@ -40,7 +40,10 @@
                             <td><span class="badge badge-pill badge-danger me-1">{{txn.transaction_status}}</span></td>
                             {% endif %}
                             <td>{{txn.transaction_date}}</td>
-                            <td><a href="{% url 'bt_mark_as_sent' pk=txn.id %}" class="badge badge-success">Mark as sent</a></td>
+                            <td><a href="{% url 'bt_mark_as_sent' pk=txn.id status='Processing' %}" class="badge badge-warning">Process</a></td>
+                            <td><a href="{% url 'bt_mark_as_sent' pk=txn.id status='Cancelled' %}" class="badge badge-danger">Cancel</a></td>
+                            <td><a href="{% url 'bt_mark_as_sent' pk=txn.id status='Refunded' %}" class="badge badge-dark">Refund</a></td>
+                            <td><a href="{% url 'bt_mark_as_sent' pk=txn.id status='Completed' %}" class="badge badge-success">Mark as sent</a></td>
                         </tr>
                     {% endfor %}
                     </tbody>

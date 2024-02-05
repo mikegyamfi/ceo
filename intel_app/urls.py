@@ -21,11 +21,11 @@ urlpatterns = [
 
     path('mtn_admin', views.admin_mtn_history, name='mtn_admin'),
 
-    path('mark_as_sent/<int:pk>', views.mark_as_sent, name='mark_as_sent'),
+    path('mark_as_sent/<int:pk>/<str:status>', views.mark_as_sent, name='mark_as_sent'),
     path('bt_admin', views.admin_bt_history, name='bt_admin'),
     path('afa_admin', views.admin_afa_history, name='afa_admin'),
-    path('bt_mark_as_sent/<int:pk>', views.bt_mark_as_sent, name='bt_mark_as_sent'),
-    path('afa_mark_as_sent/<int:pk>', views.afa_mark_as_sent, name='afa_mark_as_sent'),
+    path('bt_mark_as_sent/<int:pk>/<str:status>', views.bt_mark_as_sent, name='bt_mark_as_sent'),
+    path('afa_mark_as_sent/<int:pk>/<str:status>', views.afa_mark_as_sent, name='afa_mark_as_sent'),
 
     path('credit_user', views.credit_user, name='credit_user'),
     path('pay_with_wallet/', views.pay_with_wallet, name='pay_with_wallet'),
