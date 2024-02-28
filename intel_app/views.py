@@ -45,12 +45,13 @@ def pay_with_wallet(request):
             bundle = models.AgentIshareBundlePrice.objects.get(price=float(amount)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentIshareBundlePrice.objects.get(price=float(amount)).bundle_volume
-        else:
-            bundle = models.IshareBundlePrice.objects.get(price=float(amount)).bundle_volume
         print(bundle)
-        send_bundle_response = helper.send_bundle(request.user, phone_number, bundle, reference)
-        data = send_bundle_response.json()
-        print(data)
+        send_bundle_response = helper.send_bundle(phone_number, bundle, reference)
+        try:
+            data = send_bundle_response.json()
+            print(data)
+        except:
+            return JsonResponse({'status': f'Something went wrong'})
 
         sms_headers = {
             'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
@@ -59,7 +60,7 @@ def pay_with_wallet(request):
 
         sms_url = 'https://webapp.usmsgh.com/api/sms/send'
         if send_bundle_response.status_code == 200:
-            if data["code"] == "0000":
+            if data["status"] == "Success":
                 new_transaction = models.IShareBundleTransaction.objects.create(
                     user=request.user,
                     bundle_number=phone_number,
@@ -146,8 +147,6 @@ def airtel_tigo(request):
             bundle = models.AgentIshareBundlePrice.objects.get(price=float(offer)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentIshareBundlePrice.objects.get(price=float(offer)).bundle_volume
-        else:
-            bundle = models.IshareBundlePrice.objects.get(price=float(offer)).bundle_volume
         new_transaction = models.IShareBundleTransaction.objects.create(
             user=request.user,
             bundle_number=phone_number,
@@ -275,26 +274,7 @@ def mtn_pay_with_wallet(request):
             bundle = models.AgentMTNBundlePrice.objects.get(price=float(amount)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentMTNBundlePrice.objects.get(price=float(amount)).bundle_volume
-        else:
-            bundle = models.MTNBundlePrice.objects.get(price=float(amount)).bundle_volume
-        url = "https://posapi.bestpaygh.com/api/v1/initiate_mtn_transaction"
 
-        payload = json.dumps({
-            "user_id": user_id,
-            "receiver": phone_number,
-            "data_volume": bundle,
-            "reference": reference,
-            "amount": amount,
-            "channel": phone
-        })
-        headers = {
-            'Authorization': auth,
-            'Content-Type': 'application/json'
-        }
-
-        response = requests.request("POST", url, headers=headers, data=payload)
-
-        print(response.text)
         print(bundle)
         sms_message = f"An order has been placed. {bundle}MB for {phone_number}"
         new_mtn_transaction = models.MTNTransaction.objects.create(
@@ -339,8 +319,6 @@ def big_time_pay_with_wallet(request):
             bundle = models.AgentBigTimeBundlePrice.objects.get(price=float(amount)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(amount)).bundle_volume
-        else:
-            bundle = models.BigTimeBundlePrice.objects.get(price=float(amount)).bundle_volume
         print(bundle)
         new_mtn_transaction = models.BigTimeTransaction.objects.create(
             user=request.user,
@@ -385,8 +363,6 @@ def mtn(request):
             bundle = models.AgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
-        else:
-            bundle = models.MTNBundlePrice.objects.get(price=float(offer)).bundle_volume
 
         url = "https://posapi.bestpaygh.com/api/v1/initiate_mtn_transaction"
 
@@ -526,8 +502,6 @@ def big_time(request):
         elif user.status == "Agent":
             bundle = models.AgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
         elif user.status == "Super Agent":
-            bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
-        else:
             bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
         print(phone_number)
         new_mtn_transaction = models.BigTimeTransaction.objects.create(

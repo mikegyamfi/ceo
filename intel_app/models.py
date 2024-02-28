@@ -14,6 +14,7 @@ class CustomUser(AbstractUser):
     choices = (
         ("User", "User"),
         ("Agent", "Agent"),
+        ("Super Agent", "Super Agent")
     )
     status = models.CharField(max_length=250, null=False, blank=False, choices=choices)
     password1 = models.CharField(max_length=100, null=False, blank=False)
