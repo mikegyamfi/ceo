@@ -10,10 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='payment',
-            name='message',
-        ),
         migrations.AddField(
             model_name='payment',
             name='channel',
