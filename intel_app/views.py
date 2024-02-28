@@ -857,9 +857,7 @@ def topup_info(request):
         new_payment = models.Payment.objects.create(
             user=request.user,
             reference=reference,
-            transaction_details=details,
             transaction_date=datetime.now(),
-            channel="topup"
         )
         new_payment.save()
 
@@ -1039,8 +1037,8 @@ def hubtel_webhook(request):
                 transaction_saved.payment_description = txn_description
                 transaction_saved.amount = amount
                 transaction_saved.save()
-                transaction_details = transaction_saved.transaction_details
-                transaction_channel = transaction_saved.channel
+                transaction_details = "hi"
+                transaction_channel = "topup"
                 user = transaction_saved.user
                 # receiver = collection_saved['number']
                 # bundle_volume = collection_saved['data_volume']
@@ -1053,161 +1051,165 @@ def hubtel_webhook(request):
                 print(transaction_details, transaction_channel)
 
                 if transaction_channel == "ishare":
-                    offer = transaction_details["offers"]
-                    phone_number = transaction_details["phone_number"]
-
-                    if user.status == "User":
-                        bundle = models.IshareBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    elif user.status == "Agent":
-                        bundle = models.AgentIshareBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    elif user.status == "Super Agent":
-                        bundle = models.SuperAgentIshareBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    else:
-                        bundle = models.IshareBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    new_transaction = models.IShareBundleTransaction.objects.create(
-                        user=user,
-                        bundle_number=phone_number,
-                        offer=f"{bundle}MB",
-                        reference=reference,
-                        transaction_status="Pending"
-                    )
-                    print("created")
-                    new_transaction.save()
-
-                    print("===========================")
-                    print(phone_number)
-                    print(bundle)
-                    print(user)
-                    print(reference)
-                    send_bundle_response = helper.send_bundle(user, phone_number, bundle, reference)
-                    data = send_bundle_response.json()
-
-                    print(data)
-
-                    sms_headers = {
-                        'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
-                        'Content-Type': 'application/json'
-                    }
-
-                    sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-
-                    if send_bundle_response.status_code == 200:
-                        if data["code"] == "0000":
-                            transaction_to_be_updated = models.IShareBundleTransaction.objects.get(
-                                reference=reference)
-                            print("got here")
-                            print(transaction_to_be_updated.transaction_status)
-                            transaction_to_be_updated.transaction_status = "Completed"
-                            transaction_to_be_updated.save()
-                            print(user.phone)
-                            print("***********")
-                            receiver_message = f"Your bundle purchase has been completed successfully. {bundle}MB has been credited to you by {user.phone}.\nReference: {reference}\n"
-                            sms_message = f"Hello @{user.username}. Your bundle purchase has been completed successfully. {bundle}MB has been credited to {phone_number}.\nReference: {reference}\nThank you for using Data4All GH.\n\nThe Data4All GH"
-
-                            sms_body = {
-                                'recipient': f"233{user.phone}",
-                                'sender_id': 'BESTPLUG',
-                                'message': sms_message
-                            }
-                            try:
-                                response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-                                print(response.text)
-                            except:
-                                print("message not sent")
-                                pass
-                            return JsonResponse({'status': 'Transaction Completed Successfully'}, status=200)
-                        else:
-                            transaction_to_be_updated = models.IShareBundleTransaction.objects.get(
-                                reference=reference)
-                            transaction_to_be_updated.transaction_status = "Failed"
-                            new_transaction.save()
-                            sms_message = f"Hello @{user.username}. Something went wrong with your transaction. Contact us for enquiries.\nBundle: {bundle}MB\nPhone Number: {phone_number}.\nReference: {reference}\nThank you for using Data4All GH.\n\nThe Data4All GH"
-
-                            sms_body = {
-                                'recipient': f"233{user.phone}",
-                                'sender_id': 'Data4All',
-                                'message': sms_message
-                            }
-                            return JsonResponse({'status': 'Something went wrong'}, status=500)
-                    else:
-                        transaction_to_be_updated = models.IShareBundleTransaction.objects.get(
-                            reference=reference)
-                        transaction_to_be_updated.transaction_status = "Failed"
-                        new_transaction.save()
-                        sms_message = f"Hello @{user.username}. Something went wrong with your transaction. Contact us for enquiries.\nBundle: {bundle}MB\nPhone Number: {phone_number}.\nReference: {payment_reference}\nThank you for using Data4All GH.\n\nThe Data4All GH"
-
-                        sms_body = {
-                            'recipient': f'233{user.phone}',
-                            'sender_id': 'Data4All',
-                            'message': sms_message
-                        }
-
-                        # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-                        #
-                        # print(response.text)
-                        return JsonResponse({'status': 'Something went wrong', 'icon': 'error'})
+                    # offer = transaction_details["offers"]
+                    # phone_number = transaction_details["phone_number"]
+                    #
+                    # if user.status == "User":
+                    #     bundle = models.IshareBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # elif user.status == "Agent":
+                    #     bundle = models.AgentIshareBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # elif user.status == "Super Agent":
+                    #     bundle = models.SuperAgentIshareBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # else:
+                    #     bundle = models.IshareBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # new_transaction = models.IShareBundleTransaction.objects.create(
+                    #     user=user,
+                    #     bundle_number=phone_number,
+                    #     offer=f"{bundle}MB",
+                    #     reference=reference,
+                    #     transaction_status="Pending"
+                    # )
+                    # print("created")
+                    # new_transaction.save()
+                    #
+                    # print("===========================")
+                    # print(phone_number)
+                    # print(bundle)
+                    # print(user)
+                    # print(reference)
+                    # send_bundle_response = helper.send_bundle(user, phone_number, bundle, reference)
+                    # data = send_bundle_response.json()
+                    #
+                    # print(data)
+                    #
+                    # sms_headers = {
+                    #     'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                    #     'Content-Type': 'application/json'
+                    # }
+                    #
+                    # sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+                    #
+                    # if send_bundle_response.status_code == 200:
+                    #     if data["code"] == "0000":
+                    #         transaction_to_be_updated = models.IShareBundleTransaction.objects.get(
+                    #             reference=reference)
+                    #         print("got here")
+                    #         print(transaction_to_be_updated.transaction_status)
+                    #         transaction_to_be_updated.transaction_status = "Completed"
+                    #         transaction_to_be_updated.save()
+                    #         print(user.phone)
+                    #         print("***********")
+                    #         receiver_message = f"Your bundle purchase has been completed successfully. {bundle}MB has been credited to you by {user.phone}.\nReference: {reference}\n"
+                    #         sms_message = f"Hello @{user.username}. Your bundle purchase has been completed successfully. {bundle}MB has been credited to {phone_number}.\nReference: {reference}\nThank you for using Data4All GH.\n\nThe Data4All GH"
+                    #
+                    #         sms_body = {
+                    #             'recipient': f"233{user.phone}",
+                    #             'sender_id': 'BESTPLUG',
+                    #             'message': sms_message
+                    #         }
+                    #         try:
+                    #             response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+                    #             print(response.text)
+                    #         except:
+                    #             print("message not sent")
+                    #             pass
+                    #         return JsonResponse({'status': 'Transaction Completed Successfully'}, status=200)
+                    #     else:
+                    #         transaction_to_be_updated = models.IShareBundleTransaction.objects.get(
+                    #             reference=reference)
+                    #         transaction_to_be_updated.transaction_status = "Failed"
+                    #         new_transaction.save()
+                    #         sms_message = f"Hello @{user.username}. Something went wrong with your transaction. Contact us for enquiries.\nBundle: {bundle}MB\nPhone Number: {phone_number}.\nReference: {reference}\nThank you for using Data4All GH.\n\nThe Data4All GH"
+                    #
+                    #         sms_body = {
+                    #             'recipient': f"233{user.phone}",
+                    #             'sender_id': 'Data4All',
+                    #             'message': sms_message
+                    #         }
+                    #         return JsonResponse({'status': 'Something went wrong'}, status=500)
+                    # else:
+                    #     transaction_to_be_updated = models.IShareBundleTransaction.objects.get(
+                    #         reference=reference)
+                    #     transaction_to_be_updated.transaction_status = "Failed"
+                    #     new_transaction.save()
+                    #     sms_message = f"Hello @{user.username}. Something went wrong with your transaction. Contact us for enquiries.\nBundle: {bundle}MB\nPhone Number: {phone_number}.\nReference: {payment_reference}\nThank you for using Data4All GH.\n\nThe Data4All GH"
+                    #
+                    #     sms_body = {
+                    #         'recipient': f'233{user.phone}',
+                    #         'sender_id': 'Data4All',
+                    #         'message': sms_message
+                    #     }
+                    #
+                    #     # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+                    #     #
+                    #     # print(response.text)
+                    #     return JsonResponse({'status': 'Something went wrong', 'icon': 'error'})
+                    ...
                 elif transaction_channel == "mtn":
-                    offer = transaction_details["offers"]
-                    phone_number = transaction_details["phone_number"]
-
-                    if user.status == "User":
-                        bundle = models.MTNBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    elif user.status == "Agent":
-                        bundle = models.AgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    elif user.status == "Super Agent":
-                        bundle = models.SuperAgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    else:
-                        bundle = models.MTNBundlePrice.objects.get(price=float(offer)).bundle_volume
-
-                    print(phone_number)
-                    new_mtn_transaction = models.MTNTransaction.objects.create(
-                        user=user,
-                        bundle_number=phone_number,
-                        offer=f"{bundle}MB",
-                        reference=reference,
-                    )
-                    new_mtn_transaction.save()
-                    return JsonResponse({'status': "Your transaction will be completed shortly"}, status=200)
+                    # offer = transaction_details["offers"]
+                    # phone_number = transaction_details["phone_number"]
+                    #
+                    # if user.status == "User":
+                    #     bundle = models.MTNBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # elif user.status == "Agent":
+                    #     bundle = models.AgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # elif user.status == "Super Agent":
+                    #     bundle = models.SuperAgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # else:
+                    #     bundle = models.MTNBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    #
+                    # print(phone_number)
+                    # new_mtn_transaction = models.MTNTransaction.objects.create(
+                    #     user=user,
+                    #     bundle_number=phone_number,
+                    #     offer=f"{bundle}MB",
+                    #     reference=reference,
+                    # )
+                    # new_mtn_transaction.save()
+                    # return JsonResponse({'status': "Your transaction will be completed shortly"}, status=200)
+                    ...
                 elif transaction_channel == "bigtime":
-                    offer = transaction_details["offers"]
-                    phone_number = transaction_details["phone_number"]
-                    if user.status == "User":
-                        bundle = models.BigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    elif user.status == "Agent":
-                        bundle = models.AgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    elif user.status == "Super Agent":
-                        bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    else:
-                        bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
-                    print(phone_number)
-                    new_mtn_transaction = models.BigTimeTransaction.objects.create(
-                        user=user,
-                        bundle_number=phone_number,
-                        offer=f"{bundle}MB",
-                        reference=reference,
-                    )
-                    new_mtn_transaction.save()
-                    return JsonResponse({'status': "Your transaction will be completed shortly"}, status=200)
+                    # offer = transaction_details["offers"]
+                    # phone_number = transaction_details["phone_number"]
+                    # if user.status == "User":
+                    #     bundle = models.BigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # elif user.status == "Agent":
+                    #     bundle = models.AgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # elif user.status == "Super Agent":
+                    #     bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # else:
+                    #     bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(offer)).bundle_volume
+                    # print(phone_number)
+                    # new_mtn_transaction = models.BigTimeTransaction.objects.create(
+                    #     user=user,
+                    #     bundle_number=phone_number,
+                    #     offer=f"{bundle}MB",
+                    #     reference=reference,
+                    # )
+                    # new_mtn_transaction.save()
+                    # return JsonResponse({'status': "Your transaction will be completed shortly"}, status=200)
+                    ...
                 elif transaction_channel == "afa":
-                    name = transaction_details["name"]
-                    phone_number = transaction_details["phone"]
-                    gh_card_number = transaction_details["card"]
-                    occupation = transaction_details["occupation"]
-                    date_of_birth = transaction_details["date_of_birth"]
-
-                    new_afa_reg = models.AFARegistration.objects.create(
-                        user=user,
-                        phone_number=phone_number,
-                        gh_card_number=gh_card_number,
-                        name=name,
-                        occupation=occupation,
-                        reference=reference,
-                        date_of_birth=date_of_birth
-                    )
-                    new_afa_reg.save()
-                    return JsonResponse({'status': "Your transaction will be completed shortly"}, status=200)
+                    # name = transaction_details["name"]
+                    # phone_number = transaction_details["phone"]
+                    # gh_card_number = transaction_details["card"]
+                    # occupation = transaction_details["occupation"]
+                    # date_of_birth = transaction_details["date_of_birth"]
+                    #
+                    # new_afa_reg = models.AFARegistration.objects.create(
+                    #     user=user,
+                    #     phone_number=phone_number,
+                    #     gh_card_number=gh_card_number,
+                    #     name=name,
+                    #     occupation=occupation,
+                    #     reference=reference,
+                    #     date_of_birth=date_of_birth
+                    # )
+                    # new_afa_reg.save()
+                    # return JsonResponse({'status': "Your transaction will be completed shortly"}, status=200)
+                    ...
                 elif transaction_channel == "topup":
-                    amount = transaction_details["topup_amount"]
+                    amount = amount
 
                     user.wallet += float(amount)
                     user.save()
