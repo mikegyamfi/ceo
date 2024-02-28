@@ -10,21 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='payment',
-            name='channel',
-            field=models.CharField(blank=True, choices=[('mtn', 'mtn'), ('ishare', 'ishare'), ('bigtime', 'bigtime'), ('afa', 'afa'), ('topup', 'topup')], max_length=250, null=True),
-        ),
-        migrations.AddField(
-            model_name='payment',
-            name='payment_details',
-            field=models.CharField(blank=True, max_length=500, null=True),
-        ),
-        migrations.AddField(
-            model_name='payment',
-            name='transaction_details',
-            field=models.JSONField(blank=True, null=True),
-        ),
         migrations.AlterField(
             model_name='payment',
             name='transaction_status',
