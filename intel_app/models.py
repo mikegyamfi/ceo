@@ -160,7 +160,7 @@ class MTNTransaction(models.Model):
         ("Completed", "Completed"),
         ("Failed", "Failed")
     )
-    transaction_status = models.CharField(max_length=100, choices=choices, default="Completed")
+    transaction_status = models.CharField(max_length=100, choices=choices, default="Pending")
     description = models.CharField(max_length=500, null=True, blank=True)
 
     def __str__(self):
