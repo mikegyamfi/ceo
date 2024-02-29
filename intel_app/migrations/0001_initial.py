@@ -125,7 +125,6 @@ class Migration(migrations.Migration):
                 ('payment_description', models.CharField(blank=True, max_length=500, null=True)),
                 ('transaction_status', models.CharField(blank=True, max_length=256, null=True)),
                 ('transaction_date', models.CharField(blank=True, max_length=250, null=True)),
-                ('message', models.CharField(blank=True, max_length=500, null=True)),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
         ),
