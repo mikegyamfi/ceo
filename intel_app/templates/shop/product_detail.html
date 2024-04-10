@@ -59,13 +59,9 @@
                         </div>
                         <div class="col-12">
                             <br>
-                            {% if product.preorder_end_date > current_date %}
                                 {% if product.quantity > 0 %}
                                     <button type="button" class="btn btn-outline-primary me-3 float-start addToCart">Add to cart <i class="fa-solid fa-cart-shopping"></i></button>
                                 {% endif %}
-                            {% else %}
-                                <p>Preorder has ended</p>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
