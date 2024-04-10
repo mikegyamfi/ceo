@@ -253,8 +253,6 @@ def mtn_pay_with_wallet(request):
         reference = request.POST.get("reference")
         print(phone_number)
         print(amount)
-        auth = config("AT")
-        user_id = config("USER_ID")
         print(reference)
         # sms_headers = {
         #     'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
@@ -295,6 +293,57 @@ def mtn_pay_with_wallet(request):
         # print(response.text)
         return JsonResponse({'status': "Your transaction will be completed shortly", 'icon': 'success'})
     return redirect('mtn')
+
+
+def telecel_pay_with_wallet(request):
+    if request.method == "POST":
+        user = models.CustomUser.objects.get(id=request.user.id)
+        phone = user.phone
+        phone_number = request.POST.get("phone")
+        amount = request.POST.get("amount")
+        reference = request.POST.get("reference")
+        print(phone_number)
+        print(amount)
+        print(reference)
+        # sms_headers = {
+        #     'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+        #     'Content-Type': 'application/json'
+        # }
+        #
+        # sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+        # admin = models.AdminInfo.objects.filter().first().phone_number
+
+        if user.wallet is None:
+            return JsonResponse({'status': f'Your wallet balance is low. Contact the admin to recharge.'})
+        elif user.wallet <= 0 or user.wallet < float(amount):
+            return JsonResponse({'status': f'Your wallet balance is low. Contact the admin to recharge.'})
+        if user.status == "User":
+            bundle = models.TelecelBundlePrice.objects.get(price=float(amount)).bundle_volume
+        elif user.status == "Agent":
+            bundle = models.AgentTelecelBundlePrice.objects.get(price=float(amount)).bundle_volume
+        elif user.status == "Super Agent":
+            bundle = models.SuperAgentTelecelBundlePrice.objects.get(price=float(amount)).bundle_volume
+
+        print(bundle)
+        sms_message = f"An order has been placed. {bundle}MB for {phone_number}"
+        new_telecel_transaction = models.TelecelTransaction.objects.create(
+            user=request.user,
+            bundle_number=phone_number,
+            offer=f"{bundle}MB",
+            reference=reference,
+        )
+        new_telecel_transaction.save()
+        user.wallet -= float(amount)
+        user.save()
+        # sms_body = {
+        #     'recipient': "233540975553",
+        #     'sender_id': 'BESTPLUG',
+        #     'message': sms_message
+        # }
+        # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+        # print(response.text)
+        return JsonResponse({'status': "Your transaction will be completed shortly", 'icon': 'success'})
+    return redirect('telecel')
 
 
 @login_required(login_url='login')
@@ -364,25 +413,7 @@ def mtn(request):
         elif user.status == "Super Agent":
             bundle = models.SuperAgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
 
-        url = "https://posapi.bestpaygh.com/api/v1/initiate_mtn_transaction"
 
-        payload = json.dumps({
-            "user_id": user_id,
-            "receiver": phone_number,
-            "data_volume": bundle,
-            "reference": reference,
-            "amount": offer,
-            "channel": phone
-        })
-        headers = {
-            'Authorization': auth,
-            'Content-Type': 'application/json'
-        }
-
-        response = requests.request("POST", url, headers=headers, data=payload)
-
-        print(response.text)
-        print(phone_number)
         new_mtn_transaction = models.MTNTransaction.objects.create(
             user=request.user,
             bundle_number=phone_number,
@@ -420,6 +451,68 @@ def mtn(request):
     context = {'form': form, 'phone_num': phone_num, 'auth': auth, 'user_id': user_id, 'mtn_dict': json.dumps(mtn_dict),
                "ref": reference, "email": user_email, "wallet": 0 if user.wallet is None else user.wallet}
     return render(request, "layouts/services/mtn.html", context=context)
+
+
+@login_required(login_url='login')
+def telecel(request):
+    user = models.CustomUser.objects.get(id=request.user.id)
+    phone = user.phone
+    status = user.status
+    form = forms.TelecelForm(status=status)
+    reference = helper.ref_generator()
+    user_email = request.user.email
+    if request.method == "POST":
+        payment_reference = request.POST.get("reference")
+        amount_paid = request.POST.get("amount")
+        new_payment = models.Payment.objects.create(
+            user=request.user,
+            reference=payment_reference,
+            amount=amount_paid,
+            transaction_date=datetime.now(),
+            transaction_status="Completed"
+        )
+        new_payment.save()
+        phone_number = request.POST.get("phone")
+        offer = request.POST.get("amount")
+
+        if user.status == "User":
+            bundle = models.TelecelBundlePrice.objects.get(price=float(offer)).bundle_volume
+        elif user.status == "Agent":
+            bundle = models.AgentTelecelBundlePrice.objects.get(price=float(offer)).bundle_volume
+        elif user.status == "Super Agent":
+            bundle = models.SuperAgentTelecelBundlePrice.objects.get(price=float(offer)).bundle_volume
+
+
+        new_mtn_transaction = models.MTNTransaction.objects.create(
+            user=request.user,
+            bundle_number=phone_number,
+            offer=f"{bundle}MB",
+            reference=payment_reference,
+
+        )
+        new_mtn_transaction.save()
+        sms_headers = {
+            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+            'Content-Type': 'application/json'
+        }
+
+        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+        sms_message = f"An order has been placed. {bundle}MB for {phone_number}"
+
+        sms_body = {
+            'recipient': "233540975553",
+            'sender_id': 'BESTPLUG',
+            'message': sms_message
+        }
+        # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+        # print(response.text)
+        return JsonResponse({'status': "Your transaction will be completed shortly", 'icon': 'success'})
+    user = models.CustomUser.objects.get(id=request.user.id)
+    phone_num = user.phone
+
+    context = {'form': form, 'phone_num': phone_num,
+               "ref": reference, "email": user_email, "wallet": 0 if user.wallet is None else user.wallet}
+    return render(request, "layouts/services/voda.html", context=context)
 
 
 @login_required(login_url='login')
@@ -549,6 +642,15 @@ def mtn_history(request):
 
 
 @login_required(login_url='login')
+def telecel_history(request):
+    user_transactions = models.TelecelTransaction.objects.filter(user=request.user).order_by('transaction_date').reverse()
+    header = "Telecel Transactions"
+    net = "telecel"
+    context = {'txns': user_transactions, "header": header, "net": net}
+    return render(request, "layouts/history.html", context=context)
+
+
+@login_required(login_url='login')
 def big_time_history(request):
     user_transactions = models.BigTimeTransaction.objects.filter(user=request.user).order_by(
         'transaction_date').reverse()
@@ -593,6 +695,14 @@ def admin_mtn_history(request):
         all_txns = models.MTNTransaction.objects.all().order_by('-transaction_date')
         context = {'txns': all_txns}
         return render(request, "layouts/services/mtn_admin.html", context=context)
+
+
+@login_required(login_url='login')
+def admin_telecel_history(request):
+    if request.user.is_staff and request.user.is_superuser:
+        all_txns = models.TelecelTransaction.objects.all().order_by('-transaction_date')
+        context = {'txns': all_txns}
+        return render(request, "layouts/services/voda_admin.html", context=context)
 
 
 @login_required(login_url='login')
@@ -659,6 +769,48 @@ def mark_as_sent(request, pk, status):
                 f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
             print(response1.text)
             return redirect('mtn_admin')
+
+
+@login_required(login_url='login')
+def telecel_mark_as_sent(request, pk, status):
+    if request.user.is_staff and request.user.is_superuser:
+        txn = models.TelecelTransaction.objects.filter(id=pk).first()
+        print(txn)
+        if status == "Processing":
+            txn.transaction_status = "Processing"
+            txn.save()
+            messages.success(request, f"Transaction Processed")
+            return redirect('telecel_admin')
+        elif status == "Cancelled":
+            txn.transaction_status = "Cancelled"
+            txn.save()
+            messages.success(request, f"Transaction Cancelled")
+            return redirect('telecel_admin')
+        elif status == "Refunded":
+            txn.transaction_status = "Refunded"
+            txn.save()
+            messages.success(request, f"Transaction Refunded")
+            return redirect('telecel_admin')
+        else:
+            txn.transaction_status = "Completed"
+            txn.save()
+            sms_headers = {
+                'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                'Content-Type': 'application/json'
+            }
+
+            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+            sms_message = f"{txn.bundle_number} has been credited with {txn.offer}.\nTransaction Reference: {txn.reference}"
+
+            sms_body = {
+                'recipient': f"233{txn.bundle_number}",
+                'sender_id': 'BESTPLUG',
+                'message': sms_message
+            }
+            response1 = requests.get(
+                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
+            print(response1.text)
+            return redirect('telecel_admin')
 
 
 @login_required(login_url='login')

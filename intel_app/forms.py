@@ -53,6 +53,24 @@ class MTNForm(forms.Form):
         # self.fields['size'].queryset = models.Size.objects.filter(domain=domain)
 
 
+class TelecelForm(forms.Form):
+    phone_number = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control mtn-phone', 'placeholder': '0200000000'}))
+    offers = forms.ModelChoiceField(queryset=models.TelecelBundlePrice.objects.all().order_by('price'),
+                                    to_field_name='price', empty_label=None,
+                                    widget=forms.Select(attrs={'class': 'form-control mtn-offer'}))
+
+    def __init__(self, status, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if status == "User":
+            self.fields['offers'].queryset = models.TelecelBundlePrice.objects.all()
+        elif status == "Agent":
+            self.fields['offers'].queryset = models.AgentTelecelBundlePrice.objects.all()
+        elif status == "Super Agent":
+            self.fields['offers'].queryset = models.SuperAgentTelecelBundlePrice.objects.all()
+        # self.fields['size'].queryset = models.Size.objects.filter(domain=domain)
+
+
 class CreditUserForm(forms.Form):
     user = forms.ModelChoiceField(queryset=models.CustomUser.objects.all().order_by('username'),
                                   to_field_name='username', empty_label=None,
@@ -96,3 +114,35 @@ class AFARegistrationForm(forms.ModelForm):
     class Meta:
         model = models.AFARegistration
         fields = ('name', 'phone_number', 'gh_card_number', 'occupation', 'date_of_birth')
+
+
+class OrderDetailsForm(forms.ModelForm):
+    full_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control full_name'}))
+    email = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control order_email'}))
+    phone = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control phone', 'placeholder': '0240000000'}))
+    address = forms.CharField(required=False, widget=forms.Textarea(
+        attrs={'class': 'form-control address', 'placeholder': 'Address', 'id': 'plain', 'cols': 20, 'rows': 4}))
+    city = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control city'}))
+    REGIONS_CHOICES = (
+        ('Ashanti Region', 'Ashanti Region'),
+        ('Brong-Ahafo Region', 'Brong-Ahafo Region'),
+        ('Central Region', 'Central Region'),
+        ('Eastern Region', 'Eastern Region'),
+        ('Greater Accra Region', 'Greater Accra Region'),
+        ('Northern Region', 'Northern Region'),
+        ('Oti Region', 'Oti Region'),
+        ('Upper East Region', 'Upper East Region'),
+        ('Upper West Region', 'Upper West Region'),
+        ('Volta Region', 'Volta Region'),
+        ('Western Region', 'Western Region'),
+        ('Western North Region', 'Western North Region'),
+    )
+
+    region = forms.CharField(widget=forms.Select(attrs={'class': 'form-control region'}, choices=REGIONS_CHOICES))
+    message = forms.CharField(required=False, widget=forms.Textarea(
+        attrs={'class': 'form-control message', 'placeholder': 'Message for Vendor', 'id': 'plain', 'cols': 20, 'rows': 4}))
+
+    class Meta:
+        model = models.Order
+        fields = ('full_name', 'email', 'phone', 'address', 'city', 'message', 'region')
