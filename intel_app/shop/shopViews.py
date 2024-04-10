@@ -56,7 +56,6 @@ def product_details(request, category_name, prod_name):
                 'main_image': main_image,
                 'current_date': datetime.now().date()
             }
-            print(product.preorder_end_date > datetime.now().date())
             return render(request, 'shop/product_detail.html', context=context)
         else:
             messages.error(request, 'Something went wrong')
