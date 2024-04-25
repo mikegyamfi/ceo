@@ -52,6 +52,7 @@ class ProductImageInline(admin.TabularInline):  # or admin.StackedInline
 
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline]
+    search_fields = ['name']
 
 
 admin.site.register(models.CustomUser, CustomUserAdmin)
