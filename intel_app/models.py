@@ -171,8 +171,8 @@ class AFARegistration(models.Model):
     phone_number = models.BigIntegerField(null=False, blank=False)
     gh_card_number = models.CharField(null=False, blank=False, max_length=256)
     name = models.CharField(max_length=250, null=False, blank=False)
-    occupation = models.CharField(max_length=20, null=False, blank=True)
-    reference = models.CharField(max_length=20, null=False, blank=True)
+    occupation = models.CharField(max_length=250, null=False, blank=True)
+    reference = models.CharField(max_length=250, null=False, blank=True)
     date_of_birth = models.DateField(null=False, blank=False)
     choices = (
         ("Pending", "Pending"),
