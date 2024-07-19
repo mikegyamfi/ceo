@@ -55,6 +55,21 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ['name']
 
 
+class VodafoneTransactionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'bundle_number', 'offer', 'reference', 'transaction_status', 'transaction_date']
+    search_fields = ['reference', 'bundle_number']
+
+
+class BigTimeTransactionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'bundle_number', 'offer', 'reference', 'transaction_status', 'transaction_date']
+    search_fields = ['reference', 'bundle_number']
+
+
+class AFATransactionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'gh_card_number', 'name', 'reference', 'date_of_birth', 'transaction_date']
+    search_fields = ['reference', 'gh_card_number', 'user__username']
+
+
 admin.site.register(models.CustomUser, CustomUserAdmin)
 admin.site.register(models.IShareBundleTransaction, IShareBundleTransactionAdmin)
 admin.site.register(models.MTNTransaction, MTNTransactionAdmin)
@@ -67,7 +82,7 @@ admin.site.register(models.AgentIshareBundlePrice)
 admin.site.register(models.AgentMTNBundlePrice)
 admin.site.register(models.SuperAgentIshareBundlePrice)
 admin.site.register(models.AFARegistration)
-admin.site.register(models.BigTimeTransaction)
+admin.site.register(models.BigTimeTransaction, BigTimeTransactionAdmin)
 admin.site.register(models.SuperAgentMTNBundlePrice)
 admin.site.register(models.BigTimeBundlePrice)
 admin.site.register(models.AgentBigTimeBundlePrice)
@@ -75,7 +90,7 @@ admin.site.register(models.SuperAgentBigTimeBundlePrice)
 admin.site.register(models.TelecelBundlePrice)
 admin.site.register(models.AgentTelecelBundlePrice)
 admin.site.register(models.SuperAgentTelecelBundlePrice)
-admin.site.register(models.TelecelTransaction)
+admin.site.register(models.TelecelTransaction, VodafoneTransactionAdmin)
 
 
 #########################################################################
