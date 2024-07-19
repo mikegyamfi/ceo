@@ -175,28 +175,36 @@ $(document).ready(function() {
     }
   });
 
-  $(".addToCart").click(function (e) {
+$(".addToCart").click(function (e) {
     e.preventDefault();
 
-    var product_id = $(this).closest(".product-data").find(".prod_id").val();
-    var product_qty = $(this).closest(".product-data").find(".qty-val").val();
-    var token = $("input[name=csrfmiddlewaretoken]").val();
+    let product_id = $(this).closest(".product-data").find(".prod_id").val();
+    let product_qty = $(this).closest(".product-data").find(".qty-val").val();
+    let color_id = $(this).closest(".product-data").find("select[name=color]").val();
+    console.log(color_id)
+    let size_id = $(this).closest(".product-data").find("select[name=size]").val();
+    console.log(size_id)
+    let token = $("input[name=csrfmiddlewaretoken]").val();
+
     $.ajax({
-      method: "POST",
-      url: "/add-to-cart/",
-      data: {
-        product_id: product_id,
-        product_qty: product_qty,
-        csrfmiddlewaretoken: token,
-      },
-      success: function (response) {
-        Toastify({
-        text: response.status,
-        duration: 5000
-        }).showToast();
-      },
+        method: "POST",
+        url: "/add-to-cart/",
+        data: {
+            product_id: product_id,
+            product_qty: product_qty,
+            color_id: color_id,
+            size_id: size_id,
+            csrfmiddlewaretoken: token,
+        },
+        success: function (response) {
+            Toastify({
+                text: response.status,
+                duration: 5000
+            }).showToast();
+        },
     });
-  });
+});
+
 
   $(".changeQty").click(function (e) {
     e.preventDefault();

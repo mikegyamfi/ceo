@@ -64,7 +64,7 @@ class AgentIshareBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -74,7 +74,7 @@ class SuperAgentIshareBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -84,7 +84,7 @@ class IshareBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -94,7 +94,7 @@ class AgentBigTimeBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -104,7 +104,7 @@ class SuperAgentBigTimeBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -114,7 +114,7 @@ class BigTimeBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -124,7 +124,7 @@ class AgentTelecelBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -134,7 +134,7 @@ class SuperAgentTelecelBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -144,7 +144,7 @@ class TelecelBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -184,7 +184,7 @@ class AFARegistration(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.phone_number} - {self.gh_card_number}"
-    
+
 
 class MTNTransaction(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -220,16 +220,15 @@ class TelecelTransaction(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.bundle_number} - {self.reference}"
-    
+
 
 class MTNBundlePrice(models.Model):
     price = models.FloatField(null=False, blank=False)
     bundle_volume = models.FloatField(null=False, blank=False)
 
-
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -237,10 +236,9 @@ class AgentMTNBundlePrice(models.Model):
     price = models.FloatField(null=False, blank=False)
     bundle_volume = models.FloatField(null=False, blank=False)
 
-
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
 
 
@@ -250,9 +248,9 @@ class SuperAgentMTNBundlePrice(models.Model):
 
     def __str__(self):
         if self.bundle_volume >= 1000:
-            return f"GHS{self.price} - {self.bundle_volume/1000}GB"
+            return f"GHS{self.price} - {self.bundle_volume / 1000}GB"
         return f"GHS{self.price} - {self.bundle_volume}MB"
-    
+
 
 class Payment(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -276,8 +274,6 @@ class TopUpRequest(models.Model):
     credited_at = models.DateTimeField(auto_now_add=True)
 
 
-
-
 ####################################################################################
 
 def get_file_path(filename):
@@ -299,6 +295,7 @@ class Category(models.Model):
     slug = models.CharField(max_length=250, null=False, blank=False)
     name = models.CharField(max_length=250, null=False, blank=True)
     image = models.ImageField(upload_to='category/', null=True, blank=True, storage=MediaStorage())
+    # image = models.ImageField(upload_to='category/', null=True, blank=True)
     description = models.TextField(max_length=600, null=False, blank=False)
     status = models.BooleanField(default=False, help_text="0=default, 1=Hidden")
     trending = models.BooleanField(default=False, help_text="0=default, 1=Trending")
@@ -311,6 +308,54 @@ class Category(models.Model):
         return self.name
 
 
+class Size(models.Model):
+    size = models.CharField(null=False, blank=False, max_length=250)
+    description = models.CharField(max_length=500, null=True, blank=True)
+
+    def __str__(self):
+        return self.size
+
+
+class Color(models.Model):
+    choices = (
+        ('red', 'Red'),
+        ('blue', 'Blue'),
+        ('green', 'Green'),
+        ('yellow', 'Yellow'),
+        ('orange', 'Orange'),
+        ('purple', 'Purple'),
+        ('pink', 'Pink'),
+        ('brown', 'Brown'),
+        ('black', 'Black'),
+        ('white', 'White'),
+        ('gray', 'Gray'),
+        ('cyan', 'Cyan'),
+        ('magenta', 'Magenta'),
+        ('lime', 'Lime'),
+        ('indigo', 'Indigo'),
+        ('violet', 'Violet'),
+        ('gold', 'Gold'),
+        ('silver', 'Silver'),
+        ('maroon', 'Maroon'),
+        ('olive', 'Olive'),
+        ('teal', 'Teal'),
+        ('navy', 'Navy'),
+        ('beige', 'Beige'),
+        ('coral', 'Coral'),
+        ('salmon', 'Salmon'),
+        ('khaki', 'Khaki'),
+        ('plum', 'Plum'),
+        ('orchid', 'Orchid'),
+        ('turquoise', 'Turquoise'),
+        ('lavender', 'Lavender'),
+    )
+    color = models.CharField(null=False, blank=False, max_length=250, choices=choices)
+    description = models.CharField(max_length=500, null=True, blank=True)
+
+    def __str__(self):
+        return self.color
+
+
 class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE, null=True, blank=True)
@@ -321,6 +366,8 @@ class Product(models.Model):
     selling_price = models.FloatField(blank=False)
     status = models.BooleanField(default=False, help_text="0=default, 1=Hidden")
     trending = models.BooleanField(default=False, help_text="0=default, 1=Trending")
+    sizes = models.ManyToManyField(Size, blank=True)
+    colors = models.ManyToManyField(Color, blank=True)
     tag = models.CharField(max_length=150, blank=False)
     meta_title = models.CharField(max_length=150, blank=True)
     meta_keywords = models.CharField(max_length=150, blank=True)
@@ -337,6 +384,7 @@ class Product(models.Model):
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='product_images/', blank=True, null=True, storage=MediaStorage())
+    # image = models.ImageField(upload_to='product_images/', blank=True, null=True)
     description = models.CharField(max_length=250, blank=True, null=True)
 
     def __str__(self):
@@ -347,6 +395,8 @@ class Cart(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     product_qty = models.PositiveIntegerField(null=False, blank=False)
+    color = models.ForeignKey(Color, null=True, blank=True, on_delete=models.SET_NULL)
+    size = models.ForeignKey(Size, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -403,6 +453,8 @@ class OrderItem(models.Model):
     price = models.FloatField(null=False)
     tracking_number = models.CharField(max_length=150, null=True)
     quantity = models.PositiveIntegerField(null=False)
+    color = models.ForeignKey(Color, null=True, blank=True, on_delete=models.SET_NULL)
+    size = models.ForeignKey(Size, null=True, blank=True, on_delete=models.SET_NULL)
     choices = (
         ('Delivered', 'Delivered'),
         ('Arrived', 'Arrived')
@@ -411,6 +463,3 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.order.tracking_number} - {self.order.user} - {self.order.full_name}"
-
-
-

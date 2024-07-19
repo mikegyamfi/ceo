@@ -72,12 +72,22 @@ def add_to_cart(request):
             prod_id = int(request.POST.get('product_id'))
             product_check = models.Product.objects.get(id=prod_id)
             if product_check:
-                if models.Cart.objects.filter(user=request.user.id, product_id=prod_id):
+                if models.Cart.objects.filter(user=request.user.id, product_id=prod_id).exists():
                     return JsonResponse({'status': "Item already in Cart"})
                 else:
                     product_qty = int(request.POST.get('product_qty'))
                     if product_check.quantity >= product_qty:
-                        models.Cart.objects.create(user=request.user, product_id=prod_id, product_qty=product_qty)
+                        color_id = request.POST.get('color_id')
+                        size_id = request.POST.get('size_id')
+                        color = models.Color.objects.get(id=color_id) if color_id else None
+                        size = models.Size.objects.get(id=size_id) if size_id else None
+                        models.Cart.objects.create(
+                            user=request.user,
+                            product_id=prod_id,
+                            product_qty=product_qty,
+                            color=color,
+                            size=size
+                        )
                         return JsonResponse({'status': "Product added to Cart"})
                     else:
                         return JsonResponse(
@@ -158,7 +168,9 @@ def checkout(request):
                     product=item.product,
                     tracking_number=order_form.tracking_number,
                     price=item.product.selling_price,
-                    quantity=item.product_qty
+                    quantity=item.product_qty,
+                    size=item.size,
+                    color=item.color,
                 )
                 order_product = models.Product.objects.filter(id=item.product_id).first()
                 order_product.quantity -= item.product_qty
@@ -354,4 +366,3 @@ def change_order_status(request, t_no, stat):
     else:
         messages.error(request, "Access Denied")
         return redirect('view_order', t_no=t_no)
-

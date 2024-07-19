@@ -1004,46 +1004,76 @@ def topup_info(request):
         amount = request.POST.get("amount")
         print(amount)
         reference = helper.top_up_ref_generator()
-        details = {
-            'topup_amount': amount
-        }
-        new_payment = models.Payment.objects.create(
+        new_topup_request = models.TopUpRequest.objects.create(
             user=request.user,
+            amount=amount,
             reference=reference,
-            transaction_date=datetime.now(),
         )
-        new_payment.save()
+        new_topup_request.save()
 
-        url = "https://payproxyapi.hubtel.com/items/initiate"
-        print("hello world")
-        print("Amount is " + amount)
-
-        try:
-            total_amount = amount
-        except:
-            return redirect('topup-info')
-
-        payload = json.dumps({
-            "totalAmount": total_amount,
-            "description": "Payment for Wallet Topup",
-            "callbackUrl": "https://www.bestpluggh.com/hubtel_webhook",
-            "returnUrl": "https://www.bestpluggh.com",
-            "cancellationUrl": "https://www.bestpluggh.com",
-            "merchantAccountNumber": "2019779",
-            "clientReference": new_payment.reference
-        })
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic WlpEWDVOdzpjMjlkYWVlMjYyYWE0OWYxYTJjNzQ5YmEzZTMyMWNkNw=='
+        sms_headers = {
+            'Authorization': 'Bearer 1136|LwSl79qyzTZ9kbcf9SpGGl1ThsY0Ujf7tcMxvPze',
+            'Content-Type': 'application/json'
         }
 
-        response = requests.request("POST", url, headers=headers, data=payload)
+        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+        sms_message = f"A top up request has been placed.\nGHS{amount} for {user}.\nReference: {reference}"
 
-        data = response.json()
-
-        checkoutUrl = data['data']['checkoutUrl']
-
-        return redirect(checkoutUrl)
+        sms_body = {
+            'recipient': f"233{admin}",
+            'sender_id': 'Geosams',
+            'message': sms_message
+        }
+        # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+        # print(response.text)
+        messages.success(request,
+                         f"Your Request has been sent successfully. Make payment now")
+        return redirect("request_successful", reference)
+        # admin = models.AdminInfo.objects.filter().first().phone_number
+        # user = models.CustomUser.objects.get(id=request.user.id)
+        # amount = request.POST.get("amount")
+        # print(amount)
+        # reference = helper.top_up_ref_generator()
+        # details = {
+        #     'topup_amount': amount
+        # }
+        # new_payment = models.Payment.objects.create(
+        #     user=request.user,
+        #     reference=reference,
+        #     transaction_date=datetime.now(),
+        # )
+        # new_payment.save()
+        #
+        # url = "https://payproxyapi.hubtel.com/items/initiate"
+        # print("hello world")
+        # print("Amount is " + amount)
+        #
+        # try:
+        #     total_amount = amount
+        # except:
+        #     return redirect('topup-info')
+        #
+        # payload = json.dumps({
+        #     "totalAmount": total_amount,
+        #     "description": "Payment for Wallet Topup",
+        #     "callbackUrl": "https://www.bestpluggh.com/hubtel_webhook",
+        #     "returnUrl": "https://www.bestpluggh.com",
+        #     "cancellationUrl": "https://www.bestpluggh.com",
+        #     "merchantAccountNumber": "2019779",
+        #     "clientReference": new_payment.reference
+        # })
+        # headers = {
+        #     'Content-Type': 'application/json',
+        #     'Authorization': 'Basic WlpEWDVOdzpjMjlkYWVlMjYyYWE0OWYxYTJjNzQ5YmEzZTMyMWNkNw=='
+        # }
+        #
+        # response = requests.request("POST", url, headers=headers, data=payload)
+        #
+        # data = response.json()
+        #
+        # checkoutUrl = data['data']['checkoutUrl']
+        #
+        # return redirect(checkoutUrl)
     return render(request, "layouts/topup-info.html")
 
 

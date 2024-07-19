@@ -146,3 +146,8 @@ class OrderDetailsForm(forms.ModelForm):
     class Meta:
         model = models.Order
         fields = ('full_name', 'email', 'phone', 'address', 'city', 'message', 'region')
+
+
+
+
+

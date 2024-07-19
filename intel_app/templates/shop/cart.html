@@ -35,9 +35,9 @@
                                     {% endwith %}
                                 </td>
                                 {% if item.product.preorder_item %}
-                                <td style="font-size: 14px">{{item.product.name}}<span class="text-danger">(Preorder)</span></td>
+                                <td style="font-size: 14px">{{item.product.name}}<span class="text-danger">(P)-({{ item.color }})-Size:{{ item.size }}</span></td>
                                 {% else %}
-                                <td style="font-size: 14px">{{item.product.name}}</td>
+                                <td style="font-size: 14px">{{item.product.name}}-({{ item.color }})-Size:{{ item.size }}</td>
                                 {%endif%}
                                 <td style="font-size: 14px">{{item.product.selling_price}}</td>
                                 <td>
