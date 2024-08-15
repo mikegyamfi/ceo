@@ -1106,10 +1106,12 @@ def topup_info(request):
             return redirect("request_successful", reference)
         else:
             url = "https://api.paystack.co/transaction/initialize"
+            paystack_amount = amount * 100
+            print(paystack_amount)
 
             fields = {
                 'email': user.email,
-                'amount': round(int(amount * 100)),
+                'amount': amount,
                 'callback_url': "https://www.bestpluggh.com",
                 'metadata': {
                     'channel': "topup",
