@@ -1126,6 +1126,7 @@ def topup_info(request):
             response = requests.post(url, json=fields, headers=headers)
 
             data = response.json()
+            print(data)
             url = data['data']['authorization_url']
             return redirect(url)
     return render(request, "layouts/topup-info.html", context={'paystack_active': paystack_active})
