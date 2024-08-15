@@ -1109,7 +1109,7 @@ def topup_info(request):
 
             fields = {
                 'email': user.email,
-                'amount': amount.price * 100,
+                'amount': amount * 100,
                 'callback_url': "https://www.hubnet.app",
                 'metadata': {
                     'channel': "topup",
