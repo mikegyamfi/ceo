@@ -1110,10 +1110,10 @@ def topup_info(request):
             fields = {
                 'email': user.email,
                 'amount': int(amount * 100),
-                'callback_url': "https://www.hubnet.app",
+                'callback_url': "https://www.bestpluggh.com",
                 'metadata': {
                     'channel': "topup",
-                    'real_amount': amount,
+                    'real_amount': int(amount),
                     'db_id': user.id
                 }
             }
