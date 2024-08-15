@@ -1109,7 +1109,7 @@ def topup_info(request):
 
             fields = {
                 'email': user.email,
-                'amount': int(amount * 100),
+                'amount': round(int(amount * 100)),
                 'callback_url': "https://www.bestpluggh.com",
                 'metadata': {
                     'channel': "topup",
