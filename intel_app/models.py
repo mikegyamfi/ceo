@@ -350,6 +350,9 @@ class Color(models.Model):
         ('orchid', 'Orchid'),
         ('turquoise', 'Turquoise'),
         ('lavender', 'Lavender'),
+        ('Bronze', 'Bronze'),
+        ('Blue-Black', 'Blue-Black'),
+        ('Rose', 'Rose')
     )
     color = models.CharField(null=False, blank=False, max_length=250, choices=choices)
     description = models.CharField(max_length=500, null=True, blank=True)

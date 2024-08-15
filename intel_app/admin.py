@@ -73,7 +73,7 @@ class AFATransactionAdmin(admin.ModelAdmin):
 class WalletTransactionAdmin(admin.ModelAdmin):
     list_display = ['user', 'transaction_type', 'transaction_amount', 'transaction_use', 'new_balance',
                     'transaction_date']
-    search_fields = ['user', 'transaction_type', 'user__username']
+    search_fields = ['transaction_type', 'user__username', 'transaction_amount', 'transaction_use']
 
 
 admin.site.register(models.CustomUser, CustomUserAdmin)
