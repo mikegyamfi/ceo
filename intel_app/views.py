@@ -1,10 +1,12 @@
+import hashlib
+import hmac
 import json
 from datetime import datetime
 
 import pandas as pd
 from decouple import config
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 import requests
 from django.views.decorators.csrf import csrf_exempt
 
@@ -95,13 +97,25 @@ def pay_with_wallet(request):
                 #
                 # print(response.text)
 
-                response1 = requests.get(
-                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{request.user.phone}&from=BESTPLUG&sms={sms_message}")
-                print(response1.text)
+                try:
+                    response1 = requests.get(
+                        f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{request.user.phone}&from=BESTPLUG&sms={sms_message}")
+                    print(response1.text)
 
-                response2 = requests.get(
-                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to={phone_number}&from=BESTPLUG&sms={receiver_message}")
-                print(response2.text)
+                    response2 = requests.get(
+                        f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to={phone_number}&from=BESTPLUG&sms={receiver_message}")
+                    print(response2.text)
+                except Exception as e:
+                    print(e)
+
+                new_wallet_transaction = models.WalletTransaction.objects.create(
+                    user=request.user,
+                    transaction_type="Debit",
+                    transaction_amount=float(amount),
+                    transaction_use="AT",
+                    new_balance=user.wallet
+                )
+                new_wallet_transaction.save()
 
                 return JsonResponse({'status': 'Transaction Completed Successfully', 'icon': 'success'})
             else:
@@ -284,6 +298,15 @@ def mtn_pay_with_wallet(request):
         new_mtn_transaction.save()
         user.wallet -= float(amount)
         user.save()
+
+        new_wallet_transaction = models.WalletTransaction.objects.create(
+            user=request.user,
+            transaction_type="Debit",
+            transaction_amount=float(amount),
+            transaction_use="MTN",
+            new_balance=user.wallet
+        )
+        new_wallet_transaction.save()
         # sms_body = {
         #     'recipient': "233540975553",
         #     'sender_id': 'BESTPLUG',
@@ -335,6 +358,15 @@ def telecel_pay_with_wallet(request):
         new_telecel_transaction.save()
         user.wallet -= float(amount)
         user.save()
+
+        new_wallet_transaction = models.WalletTransaction.objects.create(
+            user=request.user,
+            transaction_type="Debit",
+            transaction_amount=float(amount),
+            transaction_use="Telecel",
+            new_balance=user.wallet
+        )
+        new_wallet_transaction.save()
         # sms_body = {
         #     'recipient': "233540975553",
         #     'sender_id': 'BESTPLUG',
@@ -378,6 +410,16 @@ def big_time_pay_with_wallet(request):
         new_mtn_transaction.save()
         user.wallet -= float(amount)
         user.save()
+
+        new_wallet_transaction = models.WalletTransaction.objects.create(
+            user=request.user,
+            transaction_type="Debit",
+            transaction_amount=float(amount),
+            transaction_use="Big Time",
+            new_balance=user.wallet
+        )
+        new_wallet_transaction.save()
+
         return JsonResponse({'status': "Your transaction will be completed shortly", 'icon': 'success'})
     return redirect('big_time')
 
@@ -412,7 +454,6 @@ def mtn(request):
             bundle = models.AgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentMTNBundlePrice.objects.get(price=float(offer)).bundle_volume
-
 
         new_mtn_transaction = models.MTNTransaction.objects.create(
             user=request.user,
@@ -481,7 +522,6 @@ def telecel(request):
             bundle = models.AgentTelecelBundlePrice.objects.get(price=float(offer)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentTelecelBundlePrice.objects.get(price=float(offer)).bundle_volume
-
 
         new_mtn_transaction = models.MTNTransaction.objects.create(
             user=request.user,
@@ -565,6 +605,15 @@ def afa_registration_wallet(request):
         new_registration.save()
         user.wallet -= float(price)
         user.save()
+
+        new_wallet_transaction = models.WalletTransaction.objects.create(
+            user=request.user,
+            transaction_type="Debit",
+            transaction_amount=float(amount),
+            transaction_use="AFA",
+            new_balance=user.wallet
+        )
+        new_wallet_transaction.save()
         return JsonResponse({'status': "Your transaction will be completed shortly", 'icon': 'success'})
     return redirect('home')
 
@@ -643,7 +692,8 @@ def mtn_history(request):
 
 @login_required(login_url='login')
 def telecel_history(request):
-    user_transactions = models.TelecelTransaction.objects.filter(user=request.user).order_by('transaction_date').reverse()
+    user_transactions = models.TelecelTransaction.objects.filter(user=request.user).order_by(
+        'transaction_date').reverse()
     header = "Telecel Transactions"
     net = "telecel"
     context = {'txns': user_transactions, "header": header, "net": net}
@@ -955,6 +1005,16 @@ def afa_mark_as_sent(request, pk, status):
             return redirect('afa_admin')
 
 
+@login_required(login_url='login')
+def wallet_history(request):
+    user_wallet_transactions = models.WalletTransaction.objects.filter(user=request.user).order_by(
+        'transaction_date').reverse()[:1000]
+    header = "Wallet Transactions"
+    net = "wallet"
+    context = {'txns': user_wallet_transactions, "header": header, "net": net}
+    return render(request, "layouts/wallet_history.html", context=context)
+
+
 def credit_user(request):
     form = forms.CreditUserForm()
     if request.user.is_superuser:
@@ -968,9 +1028,23 @@ def credit_user(request):
                 user_needed = models.CustomUser.objects.get(username=user)
                 if user_needed.wallet is None:
                     user_needed.wallet = float(amount)
+                    new_wallet_transaction = models.WalletTransaction.objects.create(
+                        user=user_needed,
+                        transaction_type="Credit",
+                        transaction_amount=float(amount),
+                        transaction_use="Top up"
+                    )
                 else:
                     user_needed.wallet += float(amount)
+                    new_wallet_transaction = models.WalletTransaction.objects.create(
+                        user=user_needed,
+                        transaction_type="Credit",
+                        transaction_amount=float(amount),
+                        transaction_use="Top up"
+                    )
                 user_needed.save()
+                new_wallet_transaction.new_balance = user_needed.wallet
+                new_wallet_transaction.save()
                 print(user_needed.username)
                 messages.success(request, "Crediting Successful")
                 sms_headers = {
@@ -998,6 +1072,7 @@ def credit_user(request):
 
 @login_required(login_url='login')
 def topup_info(request):
+    paystack_active = models.AdminInfo.objects.filter().first().paystack_active
     if request.method == "POST":
         admin = models.AdminInfo.objects.filter().first().phone_number
         user = models.CustomUser.objects.get(id=request.user.id)
@@ -1010,71 +1085,50 @@ def topup_info(request):
             reference=reference,
         )
         new_topup_request.save()
+        if not models.AdminInfo.objects.filter().first().paystack_active:
+            sms_headers = {
+                'Authorization': 'Bearer 1136|LwSl79qyzTZ9kbcf9SpGGl1ThsY0Ujf7tcMxvPze',
+                'Content-Type': 'application/json'
+            }
 
-        sms_headers = {
-            'Authorization': 'Bearer 1136|LwSl79qyzTZ9kbcf9SpGGl1ThsY0Ujf7tcMxvPze',
-            'Content-Type': 'application/json'
-        }
+            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+            sms_message = f"A top up request has been placed.\nGHS{amount} for {user}.\nReference: {reference}"
 
-        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-        sms_message = f"A top up request has been placed.\nGHS{amount} for {user}.\nReference: {reference}"
+            sms_body = {
+                'recipient': f"233{admin}",
+                'sender_id': 'Geosams',
+                'message': sms_message
+            }
+            # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+            # print(response.text)
+            messages.success(request,
+                             f"Your Request has been sent successfully. Make payment now")
+            return redirect("request_successful", reference)
+        else:
+            url = "https://api.paystack.co/transaction/initialize"
 
-        sms_body = {
-            'recipient': f"233{admin}",
-            'sender_id': 'Geosams',
-            'message': sms_message
-        }
-        # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-        # print(response.text)
-        messages.success(request,
-                         f"Your Request has been sent successfully. Make payment now")
-        return redirect("request_successful", reference)
-        # admin = models.AdminInfo.objects.filter().first().phone_number
-        # user = models.CustomUser.objects.get(id=request.user.id)
-        # amount = request.POST.get("amount")
-        # print(amount)
-        # reference = helper.top_up_ref_generator()
-        # details = {
-        #     'topup_amount': amount
-        # }
-        # new_payment = models.Payment.objects.create(
-        #     user=request.user,
-        #     reference=reference,
-        #     transaction_date=datetime.now(),
-        # )
-        # new_payment.save()
-        #
-        # url = "https://payproxyapi.hubtel.com/items/initiate"
-        # print("hello world")
-        # print("Amount is " + amount)
-        #
-        # try:
-        #     total_amount = amount
-        # except:
-        #     return redirect('topup-info')
-        #
-        # payload = json.dumps({
-        #     "totalAmount": total_amount,
-        #     "description": "Payment for Wallet Topup",
-        #     "callbackUrl": "https://www.bestpluggh.com/hubtel_webhook",
-        #     "returnUrl": "https://www.bestpluggh.com",
-        #     "cancellationUrl": "https://www.bestpluggh.com",
-        #     "merchantAccountNumber": "2019779",
-        #     "clientReference": new_payment.reference
-        # })
-        # headers = {
-        #     'Content-Type': 'application/json',
-        #     'Authorization': 'Basic WlpEWDVOdzpjMjlkYWVlMjYyYWE0OWYxYTJjNzQ5YmEzZTMyMWNkNw=='
-        # }
-        #
-        # response = requests.request("POST", url, headers=headers, data=payload)
-        #
-        # data = response.json()
-        #
-        # checkoutUrl = data['data']['checkoutUrl']
-        #
-        # return redirect(checkoutUrl)
-    return render(request, "layouts/topup-info.html")
+            fields = {
+                'email': user.email,
+                'amount': amount.price * 100,
+                'callback_url': "https://www.hubnet.app",
+                'metadata': {
+                    'channel': "topup",
+                    'real_amount': amount,
+                    'db_id': user.id
+                }
+            }
+
+            headers = {
+                "Authorization": config("PAYSTACK_KEY"),
+                "Cache-Control": "no-cache"
+            }
+
+            response = requests.post(url, json=fields, headers=headers)
+
+            data = response.json()
+            url = data['data']['authorization_url']
+            return redirect(url)
+    return render(request, "layouts/topup-info.html", context={'paystack_active': paystack_active})
 
 
 @login_required(login_url='login')
@@ -1115,6 +1169,14 @@ def credit_user_from_list(request, reference):
         print(amount)
         custom_user.wallet += amount
         custom_user.save()
+        new_wallet_transaction = models.WalletTransaction.objects.create(
+            user=custom_user,
+            transaction_type="Credit",
+            transaction_amount=float(amount),
+            transaction_use="Top up",
+            new_balance=custom_user.wallet
+        )
+        new_wallet_transaction.save()
         crediting.status = True
         crediting.credited_at = datetime.now()
         crediting.save()
@@ -1420,3 +1482,383 @@ def hubtel_webhook(request):
     else:
         print("not post")
         return JsonResponse({'message': 'Not Found'}, status=404)
+
+
+@csrf_exempt
+def paystack_webhook(request):
+    if request.method == "POST":
+        paystack_secret_key = config("PAYSTACK_SECRET_KEY")
+        # print(paystack_secret_key)
+        payload = json.loads(request.body)
+
+        paystack_signature = request.headers.get("X-Paystack-Signature")
+
+        if not paystack_secret_key or not paystack_signature:
+            return HttpResponse(status=400)
+
+        computed_signature = hmac.new(
+            paystack_secret_key.encode('utf-8'),
+            request.body,
+            hashlib.sha512
+        ).hexdigest()
+
+        if computed_signature == paystack_signature:
+            print("yes")
+            print(payload.get('data'))
+            r_data = payload.get('data')
+            print(r_data.get('metadata'))
+            print(payload.get('event'))
+            if payload.get('event') == 'charge.success':
+                metadata = r_data.get('metadata')
+                receiver = metadata.get('receiver')
+                db_id = metadata.get('db_id')
+                print(db_id)
+                # offer = metadata.get('offer')
+                user = models.CustomUser.objects.get(id=int(db_id))
+                print(user)
+                channel = metadata.get('channel')
+                real_amount = metadata.get('real_amount')
+                print(real_amount)
+                paid_amount = r_data.get('amount')
+                reference = r_data.get('reference')
+
+                paid_amount = r_data.get('amount')
+                reference = r_data.get('reference')
+
+                slashed_amount = float(paid_amount) / 100
+                reference = r_data.get('reference')
+
+                if channel != "afa":
+                    rounded_real_amount = round(float(real_amount))
+                    rounded_paid_amount = round(float(slashed_amount))
+
+                    print(f"reeeeeeeaaaaaaaaal amount: {rounded_real_amount}")
+                    print(f"paaaaaaaaaaaaaiiddd amount: {rounded_paid_amount}")
+
+                    is_within_range = (rounded_real_amount - 5) <= rounded_paid_amount <= (rounded_real_amount + 5)
+
+                    if not is_within_range:
+                        print("not within range")
+                        return HttpResponse(200)
+
+                if channel == "ishare":
+                    if user.status == "User":
+                        bundle = models.IshareBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    elif user.status == "Agent":
+                        bundle = models.AgentIshareBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    elif user.status == "Super Agent":
+                        bundle = models.SuperAgentIshareBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    else:
+                        bundle = models.IshareBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+
+                    if models.IShareBundleTransaction.objects.filter(reference=reference, offer=f"{bundle}MB",
+                                                                     transaction_status="Completed").exists():
+                        return HttpResponse(status=200)
+
+
+                    else:
+                        send_bundle_response = helper.send_bundle(receiver, bundle, reference)
+                        try:
+                            data = send_bundle_response.json()
+                            print(data)
+                        except:
+                            return HttpResponse(status=500)
+
+                        sms_headers = {
+                            'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
+                            'Content-Type': 'application/json'
+                        }
+
+                        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+                        if send_bundle_response.status_code == 200:
+                            if data["status"] == "Success":
+                                new_transaction = models.IShareBundleTransaction.objects.create(
+                                    user=user,
+                                    bundle_number=receiver,
+                                    offer=f"{bundle}MB",
+                                    reference=reference,
+                                    transaction_status="Completed"
+                                )
+                                new_transaction.save()
+                                receiver_message = f"Your bundle purchase has been completed successfully. {bundle}MB has been credited to you by {user.phone}.\nReference: {reference}\n"
+                                sms_message = f"Hello @{request.user.username}. Your bundle purchase has been completed successfully. {bundle}MB has been credited to {receiver}.\nReference: {reference}\nCurrent Wallet Balance: {user.wallet}\nThank you for using GH BAY."
+
+                                num_without_0 = receiver[1:]
+                                print(num_without_0)
+                                receiver_body = {
+                                    'recipient': f"233{num_without_0}",
+                                    'sender_id': 'GH BAY',
+                                    'message': receiver_message
+                                }
+
+                                response = requests.request('POST', url=sms_url, params=receiver_body,
+                                                            headers=sms_headers)
+                                print(response.text)
+
+                                sms_body = {
+                                    'recipient': f"233{request.user.phone}",
+                                    'sender_id': 'GH BAY',
+                                    'message': sms_message
+                                }
+
+                                response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+
+                                print(response.text)
+                                return HttpResponse(status=200)
+                            else:
+                                new_transaction = models.IShareBundleTransaction.objects.create(
+                                    user=user,
+                                    bundle_number=receiver,
+                                    offer=f"{bundle}MB",
+                                    reference=reference,
+                                    transaction_status="Pending"
+                                )
+                                new_transaction.save()
+                                return HttpResponse(status=500)
+                        else:
+                            new_transaction = models.IShareBundleTransaction.objects.create(
+                                user=user,
+                                bundle_number=receiver,
+                                offer=f"{bundle}MB",
+                                reference=reference,
+                                transaction_status="Pending"
+                            )
+                            new_transaction.save()
+                            return HttpResponse(status=500)
+                elif channel == "mtn":
+                    new_payment = models.Payment.objects.create(
+                        user=user,
+                        reference=reference,
+                        amount=paid_amount,
+                        transaction_date=datetime.now(),
+                        transaction_status="Pending"
+                    )
+                    new_payment.save()
+
+                    if user.status == "User":
+                        bundle = models.MTNBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    elif user.status == "Agent":
+                        bundle = models.AgentMTNBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    elif user.status == "Super Agent":
+                        bundle = models.SuperAgentMTNBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    else:
+                        bundle = models.MTNBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+
+                    print(receiver)
+
+                    new_mtn_transaction = models.MTNTransaction.objects.create(
+                        user=user,
+                        bundle_number=receiver,
+                        offer=f"{bundle}MB",
+                        reference=reference,
+                    )
+                    new_mtn_transaction.save()
+                    return HttpResponse(status=200)
+                elif channel == "at_min":
+                    new_payment = models.Payment.objects.create(
+                        user=user,
+                        reference=reference,
+                        amount=paid_amount,
+                        transaction_date=datetime.now(),
+                        transaction_status="Pending"
+                    )
+                    new_payment.save()
+
+                    if user.status == "User":
+                        minutes = models.ATCreditPrice.objects.get(price=float(real_amount)).minutes
+                    else:
+                        minutes = models.ATCreditPrice.objects.get(price=float(real_amount)).minutes
+
+                    print(receiver)
+
+                    new_mtn_transaction = models.ATMinuteTransaction.objects.create(
+                        user=user,
+                        bundle_number=receiver,
+                        offer=f"{minutes} Minutes",
+                        reference=reference,
+                    )
+                    new_mtn_transaction.save()
+                    return HttpResponse(status=200)
+                elif channel == "afa_credit":
+                    new_payment = models.Payment.objects.create(
+                        user=user,
+                        reference=reference,
+                        amount=paid_amount,
+                        transaction_date=datetime.now(),
+                        transaction_status="Pending"
+                    )
+                    new_payment.save()
+
+                    if user.status == "User":
+                        minutes = models.AfaCreditPrice.objects.get(price=float(real_amount)).minutes
+                    else:
+                        minutes = models.AfaCreditPrice.objects.get(price=float(real_amount)).minutes
+
+                    print(receiver)
+
+                    new_mtn_transaction = models.AfaCreditTransaction.objects.create(
+                        user=user,
+                        bundle_number=receiver,
+                        offer=f"{minutes} Minutes",
+                        reference=reference,
+                    )
+                    new_mtn_transaction.save()
+                    return HttpResponse(status=200)
+                elif channel == "big-time":
+                    new_payment = models.Payment.objects.create(
+                        user=user,
+                        reference=reference,
+                        amount=paid_amount,
+                        transaction_date=datetime.now(),
+                        transaction_status="Pending"
+                    )
+                    new_payment.save()
+
+                    if user.status == "User":
+                        bundle = models.BigTimeBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    elif user.status == "Agent":
+                        bundle = models.AgentBigTimeBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    elif user.status == "Super Agent":
+                        bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                    else:
+                        bundle = models.BigTimeBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+
+                    print(receiver)
+
+                    new_transaction = models.BigTimeTransaction.objects.create(
+                        user=user,
+                        bundle_number=receiver,
+                        offer=f"{bundle}MB",
+                        reference=reference,
+                    )
+                    new_transaction.save()
+                    return HttpResponse(status=200)
+                elif channel == "afa":
+                    phone_number = metadata.get('phone_number')
+                    gh_card_number = metadata.get('card_number')
+                    name = metadata.get('name')
+                    occupation = metadata.get('occupation')
+                    date_of_birth = metadata.get('dob')
+
+                    new_payment = models.Payment.objects.create(
+                        user=user,
+                        reference=reference,
+                        amount=paid_amount,
+                        transaction_date=datetime.now(),
+                        transaction_status="Pending"
+                    )
+                    new_payment.save()
+
+                    new_afa_txn = models.AFARegistration2.objects.create(
+                        user=user,
+                        reference=reference,
+                        name=name,
+                        gh_card_number=gh_card_number,
+                        phone_number=phone_number,
+                        occupation=occupation,
+                        date_of_birth=date_of_birth
+                    )
+                    new_afa_txn.save()
+                    return HttpResponse(status=200)
+                elif channel == "topup":
+                    amount = real_amount
+
+                    user.wallet += float(amount)
+                    user.save()
+
+                    new_topup = models.TopUpRequest.objects.create(
+                        user=user,
+                        reference=reference,
+                        amount=amount,
+                        status=True,
+                    )
+                    new_topup.save()
+
+                    new_wallet_transaction = models.WalletTransaction.objects.create(
+                        user=user,
+                        transaction_type="Credit",
+                        transaction_amount=float(amount),
+                        transaction_use="Top up (Paystack)",
+                        new_balance=user.wallet
+                    )
+                    new_wallet_transaction.save()
+                    return JsonResponse({'status': "Wallet Credited"}, status=200)
+                elif channel == "commerce":
+                    phone_number = metadata.get('phone_number')
+                    region = metadata.get('region')
+                    name = metadata.get('name')
+                    city = metadata.get('city')
+                    message = metadata.get('message')
+                    address = metadata.get('address')
+                    order_mail = metadata.get('order_mail')
+
+                    print(phone_number, region, name, city, message, address, order_mail)
+
+                    new_order_items = models.Cart.objects.filter(user=user)
+                    cart = models.Cart.objects.filter(user=user)
+                    cart_total_price = 0
+                    for item in cart:
+                        cart_total_price += item.product.selling_price * item.product_qty
+                    print(cart_total_price)
+                    print(user.wallet)
+                    if models.Order.objects.filter(tracking_number=reference, message=message,
+                                                   payment_id=reference).exists():
+                        return HttpResponse(status=200)
+                    order_form = models.Order.objects.create(
+                        user=user,
+                        full_name=name,
+                        email=order_mail,
+                        phone=phone_number,
+                        address=address,
+                        city=city,
+                        region=region,
+                        total_price=cart_total_price,
+                        payment_mode="Paystack",
+                        payment_id=reference,
+                        message=message,
+                        tracking_number=reference
+                    )
+                    order_form.save()
+
+                    for item in new_order_items:
+                        models.OrderItem.objects.create(
+                            order=order_form,
+                            product=item.product,
+                            tracking_number=order_form.tracking_number,
+                            price=item.product.selling_price,
+                            quantity=item.product_qty
+                        )
+                        order_product = models.Product.objects.filter(id=item.product_id).first()
+                        order_product.quantity -= item.product_qty
+                        order_product.save()
+
+                    models.Cart.objects.filter(user=user).delete()
+
+                    sms_headers = {
+                        'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
+                        'Content-Type': 'application/json'
+                    }
+
+                    sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+                    sms_message = f"Order Placed Successfully\nYour order with order number {order_form.tracking_number} has been received and is being processed.\nYou will receive a message when your order is Out for Delivery.\nThank you for shopping with GH BAY"
+
+                    sms_body = {
+                        'recipient': f"233{order_form.phone}",
+                        'sender_id': 'GH BAY',
+                        'message': sms_message
+                    }
+                    try:
+                        response1 = requests.get(
+                            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{order_form.phone}&from=BESTPLUG&sms={sms_message}")
+                        print(response1.text)
+                    except:
+                        print("Could not send sms message")
+                    return HttpResponse(status=200)
+                elif channel == "voda":
+                    return HttpResponse(status=200)
+                else:
+                    return HttpResponse(status=200)
+            else:
+                return HttpResponse(status=200)
+        else:
+            return HttpResponse(status=401)

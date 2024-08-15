@@ -43,6 +43,8 @@ class AdminInfo(models.Model):
     )
     payment_channel = models.CharField(max_length=250, choices=choices)
     afa_price = models.FloatField(null=True, blank=True)
+    paystack_active = models.BooleanField(default=False)
+    paystack_active_commerce = models.BooleanField(default=False)
 
 
 class IShareBundleTransaction(models.Model):
@@ -463,3 +465,16 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.order.tracking_number} - {self.order.user} - {self.order.full_name}"
+
+
+class WalletTransaction(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    choices = (
+        ("Debit", "Debit"),
+        ("Credit", "Credit"),
+    )
+    transaction_type = models.CharField(max_length=250, null=True, blank=True, choices=choices)
+    transaction_date = models.DateTimeField(auto_now_add=True)
+    transaction_use = models.CharField(max_length=250, null=True, blank=True)
+    transaction_amount = models.FloatField(null=False)
+    new_balance = models.FloatField(null=True)

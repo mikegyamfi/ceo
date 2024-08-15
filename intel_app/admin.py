@@ -70,6 +70,12 @@ class AFATransactionAdmin(admin.ModelAdmin):
     search_fields = ['reference', 'gh_card_number', 'user__username']
 
 
+class WalletTransactionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'transaction_type', 'transaction_amount', 'transaction_use', 'new_balance',
+                    'transaction_date']
+    search_fields = ['user', 'transaction_type', 'user__username']
+
+
 admin.site.register(models.CustomUser, CustomUserAdmin)
 admin.site.register(models.IShareBundleTransaction, IShareBundleTransactionAdmin)
 admin.site.register(models.MTNTransaction, MTNTransactionAdmin)
@@ -91,6 +97,7 @@ admin.site.register(models.TelecelBundlePrice)
 admin.site.register(models.AgentTelecelBundlePrice)
 admin.site.register(models.SuperAgentTelecelBundlePrice)
 admin.site.register(models.TelecelTransaction, VodafoneTransactionAdmin)
+admin.site.register(models.WalletTransaction, WalletTransactionAdmin)
 
 
 #########################################################################

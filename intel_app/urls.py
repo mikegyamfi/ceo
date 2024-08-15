@@ -18,6 +18,7 @@ urlpatterns = [
     path('history/mtn', views.mtn_history, name="mtn-history"),
     path('history/telecel', views.telecel_history, name="telecel-history"),
     path('history/big_time', views.big_time_history, name="bt-history"),
+    path('history/wallet', views.wallet_history, name='wallet_history'),
     path('history/afa', views.afa_history, name="afa-history"),
     path('verify_transaction/<str:reference>/', views.verify_transaction, name="verify_transaction"),
 

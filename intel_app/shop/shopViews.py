@@ -137,75 +137,123 @@ def delete_cart_item(request):
 @login_required(login_url='login')
 def checkout(request):
     if request.method == 'POST':
-        print("posted")
         form = forms.OrderDetailsForm(request.POST)
         user = models.CustomUser.objects.filter(id=request.user.id).first()
-        if form.is_valid():
-            new_order_items = models.Cart.objects.filter(user=request.user)
-            cart = models.Cart.objects.filter(user=request.user)
-            cart_total_price = 0
-            for item in cart:
-                cart_total_price += item.product.selling_price * item.product_qty
-            print(cart_total_price)
-            print(user.wallet)
-            if user.wallet == 0 or user.wallet is None or cart_total_price > user.wallet:
-                messages.info(request, "Not enough wallet balance")
-                return redirect('checkout')
-            order_form = form.save(commit=False)
-            order_form.payment_mode = "Wallet"
-            ref = 'BP' + str(random.randint(11111111, 99999999))
-            while models.Payment.objects.filter(reference=ref) is None:
+        if not models.AdminInfo.objects.filter().first().paystack_active_commerce:
+            print("posted")
+            if form.is_valid():
+                new_order_items = models.Cart.objects.filter(user=request.user)
+                cart = models.Cart.objects.filter(user=request.user)
+                cart_total_price = 0
+                for item in cart:
+                    cart_total_price += item.product.selling_price * item.product_qty
+                print(cart_total_price)
+                print(user.wallet)
+                if user.wallet == 0 or user.wallet is None or cart_total_price > user.wallet:
+                    messages.info(request, "Not enough wallet balance")
+                    return redirect('checkout')
+                order_form = form.save(commit=False)
+                order_form.payment_mode = "Wallet"
                 ref = 'BP' + str(random.randint(11111111, 99999999))
-            current_user = models.CustomUser.objects.filter(id=request.user.id).first()
-            order_form.total_price = cart_total_price
-            order_form.user = current_user
-            order_form.tracking_number = ref
-            order_form.save()
+                while models.Payment.objects.filter(reference=ref) is None:
+                    ref = 'BP' + str(random.randint(11111111, 99999999))
+                current_user = models.CustomUser.objects.filter(id=request.user.id).first()
+                order_form.total_price = cart_total_price
+                order_form.user = current_user
+                order_form.tracking_number = ref
+                order_form.save()
 
-            for item in new_order_items:
-                models.OrderItem.objects.create(
-                    order=order_form,
-                    product=item.product,
-                    tracking_number=order_form.tracking_number,
-                    price=item.product.selling_price,
-                    quantity=item.product_qty,
-                    size=item.size,
-                    color=item.color,
+                for item in new_order_items:
+                    models.OrderItem.objects.create(
+                        order=order_form,
+                        product=item.product,
+                        tracking_number=order_form.tracking_number,
+                        price=item.product.selling_price,
+                        quantity=item.product_qty,
+                        size=item.size,
+                        color=item.color,
+                    )
+                    order_product = models.Product.objects.filter(id=item.product_id).first()
+                    order_product.quantity -= item.product_qty
+                    order_product.save()
+
+                models.Cart.objects.filter(user=request.user).delete()
+
+                user.wallet -= cart_total_price
+                user.save()
+
+                new_wallet_transaction = models.WalletTransaction.objects.create(
+                    user=user,
+                    transaction_type="Debit",
+                    transaction_amount=float(cart_total_price),
+                    transaction_use="Commerce",
+                    new_balance=user.wallet
                 )
-                order_product = models.Product.objects.filter(id=item.product_id).first()
-                order_product.quantity -= item.product_qty
-                order_product.save()
+                new_wallet_transaction.save()
 
-            models.Cart.objects.filter(user=request.user).delete()
+                sms_headers = {
+                    'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
+                    'Content-Type': 'application/json'
+                }
 
-            user.wallet -= cart_total_price
-            user.save()
+                sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+                sms_message = f"Order Placed Successfully\nYour order with order number {order_form.tracking_number} has been received and is being processed.\nYou will receive a message when your order is Out for Delivery.\nThank you for shopping with BestPlug"
 
-            sms_headers = {
-                'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
-                'Content-Type': 'application/json'
-            }
+                sms_body = {
+                    'recipient': f"233{order_form.phone}",
+                    'sender_id': 'BESTPLUG',
+                    'message': sms_message
+                }
+                try:
+                    response1 = requests.get(
+                        f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{order_form.phone}&from=BESTPLUG&sms={sms_message}")
+                    print(response1.text)
+                except:
+                    print("Could not send sms message")
 
-            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-            sms_message = f"Order Placed Successfully\nYour order with order number {order_form.tracking_number} has been received and is being processed.\nYou will receive a message when your order is Out for Delivery.\nThank you for shopping with BestPlug"
-
-            sms_body = {
-                'recipient': f"233{order_form.phone}",
-                'sender_id': 'BESTPLUG',
-                'message': sms_message
-            }
-            try:
-                response1 = requests.get(
-                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{order_form.phone}&from=BESTPLUG&sms={sms_message}")
-                print(response1.text)
-            except:
-                print("Could not send sms message")
-
-            messages.success(request, "Your order has been placed")
-            return redirect('cart')
+                messages.success(request, "Your order has been placed")
+                return redirect('cart')
+            else:
+                messages.error(request, "Invalid Form Submission")
+                return redirect('checkout')
         else:
-            messages.error(request, "Invalid Form Submission")
-            return redirect('checkout')
+            if form.is_valid():
+                new_order_items = models.Cart.objects.filter(user=request.user)
+                cart = models.Cart.objects.filter(user=request.user)
+                cart_total_price = 0
+                for item in cart:
+                    cart_total_price += item.product.selling_price * item.product_qty
+                url = "https://api.paystack.co/transaction/initialize"
+
+                fields = {
+                    'email': user.email,
+                    'amount': cart_total_price * 100,
+                    'callback_url': "https://www.hubnet.app",
+                    'metadata': {
+                        'receiver': form.cleaned_data['phone'],
+                        'phone_number': user.phone,
+                        'channel': 'commerce',
+                        'real_amount': cart_total_price,
+                        'db_id': user.id,
+                        'address': form.cleaned_data['address'],
+                        'name': form.cleaned_data['full_name'],
+                        'region': form.cleaned_data['region'],
+                        'city': form.cleaned_data['city'],
+                        'message': form.cleaned_data['message'],
+                        'order_mail': form.cleaned_data['email'],
+                    }
+                }
+
+                headers = {
+                    "Authorization": config("PAYSTACK_KEY"),
+                    "Cache-Control": "no-cache"
+                }
+
+                response = requests.post(url, json=fields, headers=headers)
+
+                data = response.json()
+                url = data['data']['authorization_url']
+                return redirect(url)
     raw_cart = models.Cart.objects.filter(user=request.user)
     for item in raw_cart:
         print(item.product_qty)
