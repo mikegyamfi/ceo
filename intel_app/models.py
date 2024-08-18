@@ -436,12 +436,13 @@ class Order(models.Model):
     payment_mode = models.CharField(max_length=150, null=True)
     payment_id = models.CharField(max_length=250, null=True, blank=True)
     order_statuses = (
+        ('Pending', 'Pending'),
         ('Processing', 'Processing'),
         ('Out for Delivery', 'Out for Delivery'),
         ('Completed', 'Completed'),
         ('Canceled', 'Canceled')
     )
-    status = models.CharField(max_length=50, choices=order_statuses, default="Processing")
+    status = models.CharField(max_length=50, choices=order_statuses, default="Pending")
     customer_mark_as_received = models.BooleanField(default=False)
     message = models.TextField(null=True)
     tracking_number = models.CharField(max_length=150, null=True)

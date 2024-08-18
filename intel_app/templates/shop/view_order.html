@@ -47,6 +47,8 @@
                                 {{order.region}}
                             </div>
 
+                        <a class="btn btn-outline-danger" href="{% url 'cancel_order' t_no=order.tracking_number %}">Cancel Order</a>
+
                             {% if request.user.is_superuser %}
                             <hr>
                             <p class="mt-2"><em><strong>Order placed by:</strong> {{order.user.first_name}} {{order.user.last_name}} - 0{{order.user.phone}}</em></p>

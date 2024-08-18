@@ -414,3 +414,24 @@ def change_order_status(request, t_no, stat):
     else:
         messages.error(request, "Access Denied")
         return redirect('view_order', t_no=t_no)
+
+
+def cancel_pending_order(request, t_no):
+    order = models.Order.objects.get(tracking_number=t_no)
+    user = models.CustomUser.objects.get(id=request.user.id)
+    if order.status == "Pending":
+        if order.payment_mode == "Wallet":
+            total_price = order.total_price
+            print(total_price)
+            order.delete()
+            user.wallet += total_price
+            user.save()
+            messages.success(request, "Order has been cancelled")
+            return redirect('cart')
+        else:
+            messages.info(request, "Payment mode must be Wallet")
+    else:
+        messages.success(request, "Order could not be canceled since it not pending")
+    return redirect('cart')
+
+

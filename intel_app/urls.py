@@ -75,6 +75,8 @@ urlpatterns = [
                   path('product-list/', shopViews.product_list_ajax),
                   path('search-product', shopViews.search_product, name="search-product"),
 
+                  path('cancel_order/<str:t_no>', shopViews.cancel_pending_order, name='cancel_order'),
+
                   path('paystack_webhook', views.paystack_webhook, name='paystack_webhook'),
 
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
