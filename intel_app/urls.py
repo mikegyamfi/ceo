@@ -76,6 +76,7 @@ urlpatterns = [
                   path('search-product', shopViews.search_product, name="search-product"),
 
                   path('cancel_order/<str:t_no>', shopViews.cancel_pending_order, name='cancel_order'),
+path('cancel_mtn_transaction/<int:pk>', views.cancel_mtn_transaction, name='cancel_mtn_transaction'),
 
                   path('paystack_webhook', views.paystack_webhook, name='paystack_webhook'),
 
