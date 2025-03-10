@@ -78,6 +78,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('bundle_number', models.BigIntegerField()),
                 ('offer', models.CharField(max_length=250)),
+                ('amount', models.FloatField()),
                 ('reference', models.CharField(blank=True, max_length=20)),
                 ('transaction_date', models.DateTimeField(auto_now_add=True)),
                 ('transaction_status', models.CharField(choices=[('Pending', 'Pending'), ('Completed', 'Completed'), ('Failed', 'Failed')], default='Pending', max_length=100)),

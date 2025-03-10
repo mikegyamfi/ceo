@@ -10,12 +10,12 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
+        migrations.AlterField(
             model_name='bigtimetransaction',
             name='amount',
             field=models.FloatField(blank=True, null=True),
         ),
-        migrations.AddField(
+        migrations.AlterField(
             model_name='teleceltransaction',
             name='amount',
             field=models.FloatField(blank=True, null=True),
