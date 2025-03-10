@@ -86,8 +86,8 @@
                             {% else %}
                             <td><span class="badge badge-pill badge-danger me-1">{{txn.transaction_status}}</span></td>
                             {% endif %}
-                            {% if net == "mtn" and txn.transaction_status == "Pending"%}
-                                <td><a href="{% url 'cancel_mtn_transaction' pk=txn.id %}" class="badge badge-pill badge-danger me-1">Cancel</a></td>
+                            {% if net != "tigo" and txn.transaction_status == "Pending"%}
+                                <td><a href="{% url 'cancel_mtn_transaction' pk=txn.id net=net %}" class="badge badge-pill badge-danger me-1">Cancel</a></td>
                                 {% else %}
                                 <td><a disabled="" class="badge badge-pill badge-light me-1">Cancel</a></td>
                             {% endif %}

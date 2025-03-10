@@ -1,13 +1,19 @@
 import hashlib
 import hmac
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
 from decouple import config
+from django.contrib.auth.forms import PasswordResetForm
+from django.db import transaction
+from django.db.models import Sum
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 import requests
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
 
 from . import forms
@@ -15,12 +21,116 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from . import helper, models
 from .forms import UploadFileForm
-from .models import CustomUser
+from .models import CustomUser, MTNTransaction, TelecelTransaction, BigTimeTransaction, IShareBundleTransaction, \
+    CheckerType, ResultChecker, ResultCheckerTransaction
 
 
 # Create your views here.
 def home(request):
-    return render(request, "layouts/index.html")
+    today = timezone.now().date()
+
+    # Daily purchases (all networks, any status) for today
+    daily_mtn = MTNTransaction.objects.filter(transaction_date__date=today).count()
+    daily_telecel = TelecelTransaction.objects.filter(transaction_date__date=today).count()
+    daily_bigtime = BigTimeTransaction.objects.filter(transaction_date__date=today).count()
+    daily_ishare = IShareBundleTransaction.objects.filter(transaction_date__date=today).count()
+    daily_purchases = daily_mtn + daily_telecel + daily_bigtime + daily_ishare
+
+    # Completed transactions for today
+    completed_mtn = MTNTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
+    completed_telecel = TelecelTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
+    completed_bigtime = BigTimeTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
+    completed_ishare = IShareBundleTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
+    completed_transactions = completed_mtn + completed_telecel + completed_bigtime + completed_ishare
+
+    # Total Sales (GHS) in last 24 hours (only from models with `amount`)
+    last_24_hours = timezone.now() - timedelta(hours=24)
+    total_sales_mtn = MTNTransaction.objects.filter(
+        transaction_date__gte=last_24_hours, transaction_status="Completed"
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    total_sales_telecel = TelecelTransaction.objects.filter(
+        transaction_date__gte=last_24_hours, transaction_status="Completed"
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    total_sales_bigtime = BigTimeTransaction.objects.filter(
+        transaction_date__gte=last_24_hours, transaction_status="Completed"
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    total_sales = total_sales_mtn + total_sales_telecel + total_sales_bigtime
+
+    # 10-Day Data
+    day_labels = []
+    sales_data = []
+    transactions_data = []
+    for i in range(10):
+        day = today - timedelta(days=(9 - i))  # oldest to newest
+        day_str = day.strftime("%b %d")
+        day_labels.append(day_str)
+
+        # Sum of completed amounts across 3 models with `amount`
+        day_mtn_sales = MTNTransaction.objects.filter(
+            transaction_date__date=day, transaction_status="Completed"
+        ).aggregate(s=Sum('amount'))['s'] or 0
+        day_telecel_sales = TelecelTransaction.objects.filter(
+            transaction_date__date=day, transaction_status="Completed"
+        ).aggregate(s=Sum('amount'))['s'] or 0
+        day_bigtime_sales = BigTimeTransaction.objects.filter(
+            transaction_date__date=day, transaction_status="Completed"
+        ).aggregate(s=Sum('amount'))['s'] or 0
+        daily_total_sales = day_mtn_sales + day_telecel_sales + day_bigtime_sales
+        sales_data.append(float(daily_total_sales))
+
+        # All transactions (any status) across all 4 models
+        count_mtn = MTNTransaction.objects.filter(transaction_date__date=day).count()
+        count_telecel = TelecelTransaction.objects.filter(transaction_date__date=day).count()
+        count_bigtime = BigTimeTransaction.objects.filter(transaction_date__date=day).count()
+        count_ishare = IShareBundleTransaction.objects.filter(transaction_date__date=day).count()
+        transactions_data.append(count_mtn + count_telecel + count_bigtime + count_ishare)
+
+    # Status distribution across all 4 models
+    completed_total = (
+        MTNTransaction.objects.filter(transaction_status="Completed").count() +
+        TelecelTransaction.objects.filter(transaction_status="Completed").count() +
+        BigTimeTransaction.objects.filter(transaction_status="Completed").count() +
+        IShareBundleTransaction.objects.filter(transaction_status="Completed").count()
+    )
+    pending_total = (
+        MTNTransaction.objects.filter(transaction_status="Pending").count() +
+        TelecelTransaction.objects.filter(transaction_status="Pending").count() +
+        BigTimeTransaction.objects.filter(transaction_status="Pending").count() +
+        IShareBundleTransaction.objects.filter(transaction_status="Pending").count()
+    )
+    failed_total = (
+        MTNTransaction.objects.filter(transaction_status="Failed").count() +
+        TelecelTransaction.objects.filter(transaction_status="Failed").count() +
+        BigTimeTransaction.objects.filter(transaction_status="Failed").count() +
+        IShareBundleTransaction.objects.filter(transaction_status="Failed").count()
+    )
+
+    status_labels = ["Completed", "Pending", "Failed"]
+    status_data = [completed_total, pending_total, failed_total]
+
+    # Network distribution = total transactions per model
+    mtn_count = MTNTransaction.objects.count()
+    telecel_count = TelecelTransaction.objects.count()
+    bigtime_count = BigTimeTransaction.objects.count()
+    ishare_count = IShareBundleTransaction.objects.count()
+    network_labels = ["MTN", "Telecel", "BigTime", "iShare"]
+    network_data = [mtn_count, telecel_count, bigtime_count, ishare_count]
+
+    context = {
+        'daily_purchases': daily_purchases,
+        'completed_transactions': completed_transactions,
+        'total_sales': total_sales,
+        'day_labels': day_labels,
+        'sales_data': sales_data,
+        'transactions_data': transactions_data,
+        'status_labels': status_labels,
+        'status_data': status_data,
+        'network_labels': network_labels,
+        'network_data': network_data,
+    }
+    # Render the homepage (index.html).
+    # The template can check `user.is_authenticated` and show hero vs. dashboard accordingly.
+    return render(request, "layouts/index.html", context)
 
 
 def services(request):
@@ -47,87 +157,130 @@ def pay_with_wallet(request):
             bundle = models.AgentIshareBundlePrice.objects.get(price=float(amount)).bundle_volume
         elif user.status == "Super Agent":
             bundle = models.SuperAgentIshareBundlePrice.objects.get(price=float(amount)).bundle_volume
+        else:
+            bundle = models.IshareBundlePrice.objects.get(price=float(amount)).bundle_volume
+
         print(bundle)
-        send_bundle_response = helper.send_bundle(phone_number, bundle, reference)
-        try:
-            data = send_bundle_response.json()
-            print(data)
-        except:
-            return JsonResponse({'status': f'Something went wrong'})
+        ishare_channel = models.AdminInfo.objects.filter().first().ishare_source
 
-        sms_headers = {
-            'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
-            'Content-Type': 'application/json'
-        }
+        if ishare_channel == "Geosams":
+            send_bundle_response = helper.send_bundle(phone_number, bundle, reference)
+            try:
+                data = send_bundle_response.json()
+                print(data)
+            except:
+                return JsonResponse({'status': f'Something went wrong'})
 
-        sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-        if send_bundle_response.status_code == 200:
-            if data["status"] == "Success":
-                new_transaction = models.IShareBundleTransaction.objects.create(
-                    user=request.user,
-                    bundle_number=phone_number,
-                    offer=f"{bundle}MB",
-                    reference=reference,
-                    transaction_status="Completed"
-                )
-                new_transaction.save()
-                user.wallet -= float(amount)
-                user.save()
-                receiver_message = f"Your bundle purchase has been completed successfully. {bundle}MB has been credited to you by {request.user.phone}.\nReference: {reference}\n"
-                sms_message = f"Hello @{request.user.username}. Your bundle purchase has been completed successfully. {bundle}MB has been credited to {phone_number}.\nReference: {reference}\nCurrent Wallet Balance: {user.wallet}\nThank you for using BESTPLUG GH.\n\nThe BESTPLUG GH"
+            sms_headers = {
+                'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                'Content-Type': 'application/json'
+            }
 
-                # num_without_0 = phone_number[1:]
-                # print(num_without_0)
-                # receiver_body = {
-                #     'recipient': f"233{num_without_0}",
-                #     'sender_id': 'BESTPLUG',
-                #     'message': receiver_message
-                # }
-                #
-                # response = requests.request('POST', url=sms_url, params=receiver_body, headers=sms_headers)
-                # print(response.text)
-                #
-                # sms_body = {
-                #     'recipient': f"233{request.user.phone}",
-                #     'sender_id': 'BESTPLUG',
-                #     'message': sms_message
-                # }
-                #
-                # response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
-                #
-                # print(response.text)
+            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+            if send_bundle_response.status_code == 200:
+                if data["code"] == "200":
+                    new_transaction = models.IShareBundleTransaction.objects.create(
+                        user=request.user,
+                        bundle_number=phone_number,
+                        offer=f"{bundle}MB",
+                        reference=reference,
+                        transaction_status="Completed"
+                    )
+                    new_transaction.save()
+                    user.wallet -= float(amount)
+                    user.save()
+                    receiver_message = f"Your bundle purchase has been completed successfully. {bundle}MB has been credited to you by {request.user.phone}.\nReference: {reference}\n"
+                    sms_message = f"Hello @{request.user.username}. Your bundle purchase has been completed successfully. {bundle}MB has been credited to {phone_number}.\nReference: {reference}\nCurrent Wallet Balance: {user.wallet}\nThank you for using BESTPLUG GH.\n\nThe BESTPLUG GH"
 
-                try:
-                    response1 = requests.get(
-                        f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{request.user.phone}&from=BESTPLUG&sms={sms_message}")
-                    print(response1.text)
+                    try:
+                        response1 = requests.get(
+                            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{request.user.phone}&from=BESTPLUG&sms={sms_message}")
+                        print(response1.text)
 
-                    response2 = requests.get(
-                        f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to={phone_number}&from=BESTPLUG&sms={receiver_message}")
-                    print(response2.text)
-                except Exception as e:
-                    print(e)
+                        response2 = requests.get(
+                            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to={phone_number}&from=BESTPLUG&sms={receiver_message}")
+                        print(response2.text)
+                    except Exception as e:
+                        print(e)
 
-                new_wallet_transaction = models.WalletTransaction.objects.create(
-                    user=request.user,
-                    transaction_type="Debit",
-                    transaction_amount=float(amount),
-                    transaction_use="AT",
-                    new_balance=user.wallet
-                )
-                new_wallet_transaction.save()
+                    new_wallet_transaction = models.WalletTransaction.objects.create(
+                        user=request.user,
+                        transaction_type="Debit",
+                        transaction_amount=float(amount),
+                        transaction_use="AT",
+                        new_balance=user.wallet
+                    )
+                    new_wallet_transaction.save()
 
-                return JsonResponse({'status': 'Transaction Completed Successfully', 'icon': 'success'})
+                    return JsonResponse({'status': 'Transaction Completed Successfully', 'icon': 'success'})
+                else:
+                    new_transaction = models.IShareBundleTransaction.objects.create(
+                        user=request.user,
+                        bundle_number=phone_number,
+                        offer=f"{bundle}MB",
+                        reference=reference,
+                        transaction_status="Failed"
+                    )
+                    new_transaction.save()
+                    return JsonResponse({'status': 'Something went wrong', 'icon': 'error'})
             else:
-                new_transaction = models.IShareBundleTransaction.objects.create(
-                    user=request.user,
-                    bundle_number=phone_number,
-                    offer=f"{bundle}MB",
-                    reference=reference,
-                    transaction_status="Failed"
-                )
-                new_transaction.save()
-                return JsonResponse({'status': 'Something went wrong', 'icon': 'error'})
+                return JsonResponse({'status': f'Something went wrong'})
+        elif ishare_channel == "Noble":
+            send_bundle_response = helper.nexus_send_bundle(phone_number, bundle, reference)
+            try:
+                data = send_bundle_response.json()
+                print(data)
+            except:
+                return JsonResponse({'status': f'Something went wrong'})
+
+            if send_bundle_response.status_code == 200:
+                if data["code"] == "200":
+                    new_transaction = models.IShareBundleTransaction.objects.create(
+                        user=request.user,
+                        bundle_number=phone_number,
+                        offer=f"{bundle}MB",
+                        reference=reference,
+                        transaction_status="Completed"
+                    )
+                    new_transaction.save()
+                    user.wallet -= float(amount)
+                    user.save()
+                    receiver_message = f"Your bundle purchase has been completed successfully. {bundle}MB has been credited to you by {request.user.phone}.\nReference: {reference}\n"
+                    sms_message = f"Hello @{request.user.username}. Your bundle purchase has been completed successfully. {bundle}MB has been credited to {phone_number}.\nReference: {reference}\nCurrent Wallet Balance: {user.wallet}\nThank you for using BESTPLUG GH.\n\nThe BESTPLUG GH"
+
+                    try:
+                        response1 = requests.get(
+                            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{request.user.phone}&from=BESTPLUG&sms={sms_message}")
+                        print(response1.text)
+
+                        response2 = requests.get(
+                            f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to={phone_number}&from=BESTPLUG&sms={receiver_message}")
+                        print(response2.text)
+                    except Exception as e:
+                        print(e)
+
+                    new_wallet_transaction = models.WalletTransaction.objects.create(
+                        user=request.user,
+                        transaction_type="Debit",
+                        transaction_amount=float(amount),
+                        transaction_use="AT",
+                        new_balance=user.wallet
+                    )
+                    new_wallet_transaction.save()
+
+                    return JsonResponse({'status': 'Transaction Completed Successfully', 'icon': 'success'})
+                else:
+                    new_transaction = models.IShareBundleTransaction.objects.create(
+                        user=request.user,
+                        bundle_number=phone_number,
+                        offer=f"{bundle}MB",
+                        reference=reference,
+                        transaction_status="Failed"
+                    )
+                    new_transaction.save()
+                    return JsonResponse({'status': 'Something went wrong', 'icon': 'error'})
+            else:
+                return JsonResponse({'status': f'Something went wrong'})
     return redirect('airtel-tigo')
 
 
@@ -355,6 +508,7 @@ def telecel_pay_with_wallet(request):
             bundle_number=phone_number,
             offer=f"{bundle}MB",
             reference=reference,
+            amount=float(amount)
         )
         new_telecel_transaction.save()
         user.wallet -= float(amount)
@@ -407,6 +561,7 @@ def big_time_pay_with_wallet(request):
             bundle_number=phone_number,
             offer=f"{bundle}MB",
             reference=reference,
+            amount=float(amount)
         )
         new_mtn_transaction.save()
         user.wallet -= float(amount)
@@ -433,8 +588,6 @@ def mtn(request):
     form = forms.MTNForm(status=status)
     reference = helper.ref_generator()
     user_email = request.user.email
-    auth = config("AT")
-    user_id = config("USER_ID")
     if request.method == "POST":
         payment_reference = request.POST.get("reference")
         amount_paid = request.POST.get("amount")
@@ -490,7 +643,7 @@ def mtn(request):
         mtn_offer = models.MTNBundlePrice.objects.all()
     for offer in mtn_offer:
         mtn_dict[str(offer)] = offer.bundle_volume
-    context = {'form': form, 'phone_num': phone_num, 'auth': auth, 'user_id': user_id, 'mtn_dict': json.dumps(mtn_dict),
+    context = {'form': form, 'phone_num': phone_num, 'mtn_dict': json.dumps(mtn_dict),
                "ref": reference, "email": user_email, "wallet": 0 if user.wallet is None else user.wallet}
     return render(request, "layouts/services/mtn.html", context=context)
 
@@ -1017,58 +1170,75 @@ def wallet_history(request):
 
 
 def credit_user(request):
+    # Only allow superusers to access the view.
+    if not request.user.is_superuser:
+        messages.error(request, "Access Denied")
+        return redirect('home')
+
+    # Instantiate an empty form if not a POST request.
     form = forms.CreditUserForm()
-    if request.user.is_superuser:
-        if request.method == "POST":
-            form = forms.CreditUserForm(request.POST)
-            if form.is_valid():
-                user = form.cleaned_data["user"]
-                amount = form.cleaned_data["amount"]
-                print(user)
-                print(amount)
-                user_needed = models.CustomUser.objects.get(username=user)
-                if user_needed.wallet is None:
-                    user_needed.wallet = float(amount)
+
+    if request.method == "POST":
+        form = forms.CreditUserForm(request.POST)
+        if form.is_valid():
+            # Get cleaned form data.
+            username = form.cleaned_data["user"]
+            amount = float(form.cleaned_data["amount"])
+
+            try:
+                # Wrap all DB operations in an atomic transaction.
+                with transaction.atomic():
+                    # Retrieve the user instance.
+                    user_needed = models.CustomUser.objects.get(username=username)
+
+                    # If wallet is not set, initialize it with the amount,
+                    # otherwise add the amount to the wallet.
+                    if user_needed.wallet is None:
+                        user_needed.wallet = amount
+                    else:
+                        user_needed.wallet += amount
+
+                    # Save the updated wallet balance.
+                    user_needed.save()
+
+                    # Create a new wallet transaction.
                     new_wallet_transaction = models.WalletTransaction.objects.create(
                         user=user_needed,
                         transaction_type="Credit",
-                        transaction_amount=float(amount),
+                        transaction_amount=amount,
                         transaction_use="Top up"
                     )
-                else:
-                    user_needed.wallet += float(amount)
-                    new_wallet_transaction = models.WalletTransaction.objects.create(
-                        user=user_needed,
-                        transaction_type="Credit",
-                        transaction_amount=float(amount),
-                        transaction_use="Top up"
-                    )
-                user_needed.save()
-                new_wallet_transaction.new_balance = user_needed.wallet
-                new_wallet_transaction.save()
-                print(user_needed.username)
-                messages.success(request, "Crediting Successful")
+                    # Update the transaction record with the new balance.
+                    new_wallet_transaction.new_balance = user_needed.wallet
+                    new_wallet_transaction.save()
+
+                # Send SMS notification after successful transaction.
                 sms_headers = {
                     'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
                     'Content-Type': 'application/json'
                 }
-
                 sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-                sms_message = f"Hello {user_needed},\nYour DataForAll wallet has been credit with GHS{amount}.\nDataForAll."
-
+                sms_message = f"Hello {user_needed},\nYour DataForAll wallet has been credited with GHS{amount}.\nDataForAll."
                 sms_body = {
                     'recipient': f"233{user_needed.phone}",
                     'sender_id': 'BESTPLUG',
                     'message': sms_message
                 }
-                response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+
+                response = requests.post(url=sms_url, params=sms_body, headers=sms_headers)
                 print(response.text)
+                messages.success(request, "Crediting Successful")
                 return redirect('credit_user')
-        context = {'form': form}
-        return render(request, "layouts/services/credit.html", context=context)
-    else:
-        messages.error(request, "Access Denied")
-        return redirect('home')
+
+            except models.CustomUser.DoesNotExist:
+                messages.error(request, "User does not exist")
+            except Exception as e:
+                # Log the error if needed.
+                messages.error(request, f"An error occurred: {e}")
+
+    # Render the form for GET requests or if POST validation fails.
+    context = {'form': form}
+    return render(request, "layouts/services/credit.html", context=context)
 
 
 @login_required(login_url='login')
@@ -1147,7 +1317,7 @@ def request_successful(request, reference):
 
 def topup_list(request):
     if request.user.is_superuser:
-        topup_requests = models.TopUpRequest.objects.all().order_by('date').reverse()
+        topup_requests = models.TopUpRequest.objects.all().order_by('date').reverse()[:200]
         context = {
             'requests': topup_requests,
         }
@@ -1858,6 +2028,74 @@ def paystack_webhook(request):
                     return HttpResponse(status=200)
                 elif channel == "voda":
                     return HttpResponse(status=200)
+                elif channel == "checker":
+                    """
+                    1. Retrieve the checker info from metadata
+                    2. Allocate pins
+                    3. Mark them used and create transactions
+                    4. Send SMS if desired
+                    """
+                    checker_type_name = metadata.get('checker_type_name')
+                    quantity = int(metadata.get('quantity', 1))
+
+                    # Fetch the CheckerType by name
+                    try:
+                        checker_type = CheckerType.objects.get(name=checker_type_name)
+                    except CheckerType.DoesNotExist:
+                        print("Checker type not found")
+                        return HttpResponse(status=200)
+
+                    # Get enough unused pins for this checker_type
+                    available_pins = ResultChecker.objects.filter(
+                        checker_type=checker_type,
+                        used=False
+                    )[:quantity]
+
+                    # If not enough pins, do something
+                    if len(available_pins) < quantity:
+                        print("Not enough pins to fulfill the order.")
+                        return HttpResponse(status=200)
+
+                    # Mark pins as used, create transactions, optionally send SMS
+                    for pin_item in available_pins:
+                        pin_item.used = True
+                        pin_item.save()
+
+                        # Create a transaction
+                        ResultCheckerTransaction.objects.create(
+                            user=user,
+                            result_checker=pin_item,
+                            amount=slashed_amount
+                        )
+
+                        # Send an SMS with the PIN and Serial, if you want
+                        # Example pseudo-SMS code:
+                        try:
+                            sms_headers = {
+                                'Authorization': 'Bearer <YOUR_SMS_API_KEY>',
+                                'Content-Type': 'application/json'
+                            }
+                            sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+                            sms_message = f"Hello {user.username},\n" \
+                                          f"Here is your {checker_type_name} checker:\n" \
+                                          f"PIN: {pin_item.pin}\n" \
+                                          f"Serial: {pin_item.serial_number}\n" \
+                                          f"Ref: {reference}\n" \
+                                          f"Thank you for using GH BAY."
+
+                            # user.phone or receiver or whichever phone number you want
+                            final_phone_number = f"233{user.phone[1:]}" if user.phone.startswith('0') else user.phone
+
+                            sms_body = {
+                                'recipient': final_phone_number,
+                                'sender_id': 'GH BAY',
+                                'message': sms_message
+                            }
+                            response = requests.post(sms_url, params=sms_body, headers=sms_headers)
+                            print(response.text)
+                        except Exception as e:
+                            print("Could not send checker SMS: ", e)
+                    return HttpResponse(status=200)
                 else:
                     return HttpResponse(status=200)
             else:
@@ -1866,30 +2104,74 @@ def paystack_webhook(request):
             return HttpResponse(status=401)
 
 
-def cancel_mtn_transaction(request, pk):
+def cancel_mtn_transaction(request, pk, net):
+    print(net)
     user = models.CustomUser.objects.get(id=request.user.id)
-    try:
-        transaction_to_be_canceled = models.MTNTransaction.objects.filter(id=pk, user=user, transaction_status="Pending").first()
-    except Exception as e:
-        print(e)
-        messages.info(request, "Could not cancel transaction")
-        return redirect('mtn-history')
+    if net == "mtn":
+        print("mtn selected")
+        try:
+            transaction_to_be_canceled = models.MTNTransaction.objects.get(id=pk, user=user, transaction_status="Pending")
+        except Exception as e:
+            print(e)
+            messages.info(request, "Could not cancel transaction")
+            return redirect('mtn-history')
+    elif net == "bt":
+        print("big time selected")
+        try:
+            transaction_to_be_canceled = models.BigTimeTransaction.objects.get(id=pk, user=user,
+                                                                               transaction_status="Pending")
+        except Exception as e:
+            print(e)
+            messages.info(request, "Could not cancel transaction")
+            return redirect('bt-history')
+    elif net == "telecel":
+        print("telecel selected")
+        try:
+            transaction_to_be_canceled = models.TelecelTransaction.objects.get(id=pk, user=user,
+                                                                               transaction_status="Pending")
+        except Exception as e:
+            print(e)
+            messages.info(request, "Could not cancel transaction")
+            return redirect('telecel-history')
+    else:
+        return redirect('history')
+
 
     try:
-        amount_to_refund = transaction_to_be_canceled.amount
-        transaction_to_be_canceled.delete()
-        user.wallet += float(amount_to_refund)
-        user.save()
+        with transaction.atomic():
+            amount_to_refund = transaction_to_be_canceled.amount
+            transaction_to_be_canceled.transaction_status = 'Canceled'
+            transaction_to_be_canceled.save()
+            user.wallet += float(amount_to_refund)
+            user.save()
 
-        new_wallet_transaction = models.WalletTransaction.objects.create(
-            user=user,
-            transaction_type="Credit",
-            transaction_amount=float(amount_to_refund),
-            transaction_use="Refund(MTN)",
-            new_balance=user.wallet
-        )
-        new_wallet_transaction.save()
-
+            if net == "mtn":
+                new_wallet_transaction = models.WalletTransaction.objects.create(
+                    user=user,
+                    transaction_type="Credit",
+                    transaction_amount=float(amount_to_refund),
+                    transaction_use="Refund(MTN)",
+                    new_balance=user.wallet
+                )
+                new_wallet_transaction.save()
+            elif net == "bt":
+                new_wallet_transaction = models.WalletTransaction.objects.create(
+                    user=user,
+                    transaction_type="Credit",
+                    transaction_amount=float(amount_to_refund),
+                    transaction_use="Refund(BigTime)",
+                    new_balance=user.wallet
+                )
+                new_wallet_transaction.save()
+            elif net == "telecel":
+                new_wallet_transaction = models.WalletTransaction.objects.create(
+                    user=user,
+                    transaction_type="Credit",
+                    transaction_amount=float(amount_to_refund),
+                    transaction_use="Refund(Telecel)",
+                    new_balance=user.wallet
+                )
+                new_wallet_transaction.save()
     except Exception as e:
         print(e)
         messages.info(request, "Unable to cancel transaction")
@@ -1898,3 +2180,51 @@ def cancel_mtn_transaction(request, pk):
     messages.success(request, "Transaction has been cancelled and money refunded into wallet")
 
     return redirect('mtn-history')
+
+
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
+
+
+def password_reset_request(request):
+    if request.method == "POST":
+        password_reset_form = PasswordResetForm(request.POST)
+        if password_reset_form.is_valid():
+            data = password_reset_form.cleaned_data['email']
+            user = models.CustomUser.objects.filter(email=data).first()
+            current_user = user
+            if user:
+                subject = "Password Reset Requested"
+                email_template_name = "password/password_reset_message.txt"
+                c = {
+                    "name": user.first_name,
+                    "email": user.email,
+                    'domain': 'www.bestpluggh.com',
+                    'site_name': 'Best Plug GH',
+                    "uid": urlsafe_base64_encode(force_bytes(user.pk)),
+                    "user": user,
+                    'token': default_token_generator.make_token(user),
+                    'protocol': 'https',
+                }
+                email = render_to_string(email_template_name, c)
+                print(email)
+
+                response1 = requests.get(
+                    f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A&to=0{user.phone}&from=BESTPLUG&sms={email}")
+                print(response1.text)
+
+                return redirect("/password_reset/done/")
+    password_reset_form = PasswordResetForm()
+    return render(request=request, template_name="password/password_reset.html",
+                  context={"password_reset_form": password_reset_form})
+
+
+
+
+
+
+
+
+
+
+

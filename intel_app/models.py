@@ -7,6 +7,9 @@ from django.contrib.auth.models import AbstractUser
 from intel_app.custom_storages import MediaStorage
 
 
+# from intel_app.custom_storages import MediaStorage
+
+
 # Create your models here.
 
 
@@ -45,13 +48,18 @@ class AdminInfo(models.Model):
     afa_price = models.FloatField(null=True, blank=True)
     paystack_active = models.BooleanField(default=False)
     paystack_active_commerce = models.BooleanField(default=False)
+    ishare_choices = (
+        ("Geosams", "Geosams"),
+        ("Noble", "Noble")
+    )
+    ishare_source = models.CharField(max_length=300, default="Geosams", choices=ishare_choices)
 
 
 class IShareBundleTransaction(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     bundle_number = models.BigIntegerField(null=False, blank=False)
     offer = models.CharField(max_length=250, null=False, blank=False)
-    reference = models.CharField(max_length=20, null=False, blank=True)
+    reference = models.CharField(max_length=250, null=False, blank=True)
     transaction_date = models.DateTimeField(auto_now_add=True)
     transaction_status = models.CharField(max_length=100, null=False)
     description = models.CharField(max_length=500, null=True, blank=True)
@@ -153,8 +161,9 @@ class TelecelBundlePrice(models.Model):
 class BigTimeTransaction(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     bundle_number = models.BigIntegerField(null=False, blank=False)
+    amount = models.FloatField(null=True, blank=True)
     offer = models.CharField(max_length=250, null=False, blank=False)
-    reference = models.CharField(max_length=20, null=False, blank=True)
+    reference = models.CharField(max_length=250, null=False, blank=True)
     transaction_date = models.DateTimeField(auto_now_add=True)
     choices = (
         ("Pending", "Pending"),
@@ -193,7 +202,7 @@ class MTNTransaction(models.Model):
     bundle_number = models.BigIntegerField(null=False, blank=False)
     offer = models.CharField(max_length=250, null=False, blank=False)
     amount = models.FloatField(null=True, blank=True)
-    reference = models.CharField(max_length=20, null=False, blank=True)
+    reference = models.CharField(max_length=250, null=False, blank=True)
     transaction_date = models.DateTimeField(auto_now_add=True)
     choices = (
         ("Pending", "Pending"),
@@ -211,7 +220,8 @@ class TelecelTransaction(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     bundle_number = models.BigIntegerField(null=False, blank=False)
     offer = models.CharField(max_length=250, null=False, blank=False)
-    reference = models.CharField(max_length=20, null=False, blank=True)
+    amount = models.FloatField(null=True, blank=True)
+    reference = models.CharField(max_length=250, null=False, blank=True)
     transaction_date = models.DateTimeField(auto_now_add=True)
     choices = (
         ("Pending", "Pending"),
@@ -483,3 +493,35 @@ class WalletTransaction(models.Model):
     transaction_use = models.CharField(max_length=250, null=True, blank=True)
     transaction_amount = models.FloatField(null=False)
     new_balance = models.FloatField(null=True)
+
+
+class CheckerType(models.Model):
+    name = models.CharField(max_length=150, null=False, blank=False)
+    description = models.CharField(max_length=250, null=True, blank=True)
+    price = models.FloatField(null=False)
+
+    def _str_(self):
+        return self.name
+
+
+class ResultChecker(models.Model):
+    checker_type = models.ForeignKey(CheckerType, on_delete=models.CASCADE)
+    pin = models.CharField(max_length=150, null=False, blank=False)
+    serial_number = models.CharField(max_length=150, null=False, blank=False)
+    used = models.BooleanField(default=False)
+    date_added = models.DateTimeField(auto_now_add=True)
+
+    def _str_(self):
+        return f"{self.date_added} - {self.pin} - {self.serial_number}"
+
+
+class ResultCheckerTransaction(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    result_checker = models.ForeignKey(ResultChecker, on_delete=models.CASCADE)
+    date_bought = models.DateTimeField(auto_now_add=True)
+    amount = models.FloatField(null=False)
+
+
+
+
+

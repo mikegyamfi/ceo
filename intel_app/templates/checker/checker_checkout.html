@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'inc/header.html' %}
+
+<header>
+  {% include 'inc/header.html' %}
+  <div class="container mt-5">
+    <div class="page-banner">
+      <div class="row justify-content-center align-items-center h-100">
+        <div class="col-md-6">
+          <nav aria-label="Breadcrumb">
+            <ul class="breadcrumb justify-content-center py-0 bg-transparent">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+              <li class="breadcrumb-item active"><a href="{% url 'services' %}">Services</a></li>
+              <li class="breadcrumb-item active">Checker</li>
+            </ul>
+          </nav>
+          <h1 class="text-center">Buy Checker</h1>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="page-section" id="services">
+    <div class="container">
+      <div>
+        <h2>Review and Checkout</h2>
+        <hr>
+        <p><strong>Checker Type:</strong> {{ checker_type.name }}</p>
+        <p><strong>Quantity:</strong> {{ quantity }}</p>
+        <p><strong>Total Amount (GHS):</strong> {{ total_amount }}</p>
+
+        <form id="payWithPaystackForm" method="POST">
+          {% csrf_token %}
+          <!-- Indicate we want to pay with paystack -->
+          <input type="hidden" name="payment_method" value="paystack">
+          <button type="submit" class="btn btn-success mt-4">Pay with Paystack</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+{% include 'inc/footer.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const paystackForm = document.getElementById('payWithPaystackForm');
+  const walletForm = document.getElementById('walletForm');
+
+  // Handle Paystack form submission via AJAX
+  paystackForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    let formData = new FormData(paystackForm);
+
+    fetch("{% url 'checkout_checker' %}", {
+      method: "POST",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.redirect_url) {
+        // If successful, we have a redirect_url from Paystack
+        window.location.href = data.redirect_url;
+      } else if (data.message) {
+        alert(data.message);
+      }
+    })
+    .catch(err => console.log(err));
+  });
+
+  // Handle Wallet form submission (optional)
+  walletForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    let formData = new FormData(walletForm);
+
+    fetch("{% url 'checkout_checker' %}", {
+      method: "POST",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status) {
+        alert(data.status);
+        // maybe redirect to history
+        window.location.href = "{% url 'checker_history' %}";
+      }
+    })
+    .catch(err => console.log(err));
+  });
+</script>
+{% endblock %}

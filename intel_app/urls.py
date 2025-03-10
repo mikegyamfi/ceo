@@ -3,6 +3,7 @@ from django.urls import path
 from django.conf.urls.static import static
 from . import views
 from .auth import authViews
+from .checker import result_checker
 from .shop import shopViews
 
 urlpatterns = [
@@ -76,9 +77,14 @@ urlpatterns = [
                   path('search-product', shopViews.search_product, name="search-product"),
 
                   path('cancel_order/<str:t_no>', shopViews.cancel_pending_order, name='cancel_order'),
-path('cancel_mtn_transaction/<int:pk>', views.cancel_mtn_transaction, name='cancel_mtn_transaction'),
-
+                  path('cancel_mtn_transaction/<int:pk>/<str:net>', views.cancel_mtn_transaction, name='cancel_mtn_transaction'),
+                  path("password_reset/", views.password_reset_request, name="password_reset"),
                   path('paystack_webhook', views.paystack_webhook, name='paystack_webhook'),
+
+                  path('result-checkers/', result_checker.CheckerTypeListView.as_view(), name='checker_types'),
+                  path('result-checkers/<int:pk>/buy/', result_checker.CheckerBuyView.as_view(), name='buy_checker'),
+                  path('result-checkers/checkout/', result_checker.CheckerCheckoutView.as_view(), name='checkout_checker'),
+                  path('result-checkers/history/', result_checker.CheckerHistoryView.as_view(), name='checker_history'),
 
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

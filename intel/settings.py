@@ -32,7 +32,8 @@ ALLOWED_HOSTS = [
     'www.bestpluggh.com',
     'bestplug-ceoofwealth-lsnoo.ondigitalocean.app',
     'bestplug-2adzs.ondigitalocean.app',
-    '127.0.0.1'
+    '127.0.0.1',
+    'localhost'
 ]
 
 
@@ -48,7 +49,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'intel_app',
-    'django_select2',
     'storages',
 ]
 

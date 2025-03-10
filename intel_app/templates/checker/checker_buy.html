@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+  {% block content %}
+  {% include 'inc/header.html' %}
+
+  <header>
+    {% include 'inc/header.html' %}
+
+    <div class="container mt-5">
+      <div class="page-banner">
+        <div class="row justify-content-center align-items-center h-100">
+          <div class="col-md-6">
+            <nav aria-label="Breadcrumb">
+              <ul class="breadcrumb justify-content-center py-0 bg-transparent">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item active"><a href="{% url 'services' %}">Services</a></li>
+                <li class="breadcrumb-item active">Checker</li>
+              </ul>
+            </nav>
+            <h1 class="text-center">Buy Checker</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-section" id="services">
+      <div class="container">
+          <div>
+            <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label>Quantity</label>
+      <input type="number" name="quantity" class="form-control" min="1" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Proceed to Checkout</button>
+  </form>
+          </div>
+      </div>
+  </div> <!-- .page-section -->
+  </main>
+
+  {% include 'inc/footer.html' %}
+
+
+{% endblock %}
+
+{% block scripts %}
+
+
+{% endblock scripts %}
+
+
