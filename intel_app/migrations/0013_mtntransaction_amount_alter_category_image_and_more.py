@@ -10,11 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='mtntransaction',
-            name='amount',
-            field=models.FloatField(blank=True, null=True),
-        ),
         migrations.AlterField(
             model_name='category',
             name='image',
