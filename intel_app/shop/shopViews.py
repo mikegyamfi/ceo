@@ -72,15 +72,22 @@ def add_to_cart(request):
             prod_id = int(request.POST.get('product_id'))
             product_check = models.Product.objects.get(id=prod_id)
             if product_check:
-                if models.Cart.objects.filter(user=request.user.id, product_id=prod_id).exists():
-                    return JsonResponse({'status': "Item already in Cart"})
-                else:
-                    product_qty = int(request.POST.get('product_qty'))
-                    if product_check.quantity >= product_qty:
-                        color_id = request.POST.get('color_id')
-                        size_id = request.POST.get('size_id')
-                        color = models.Color.objects.get(id=color_id) if color_id else None
-                        size = models.Size.objects.get(id=size_id) if size_id else None
+                product_qty = int(request.POST.get('product_qty'))
+                if product_check.quantity >= product_qty:
+                    color_id = request.POST.get('color_id')
+                    size_id = request.POST.get('size_id')
+                    color = models.Color.objects.get(id=color_id) if color_id else None
+                    size = models.Size.objects.get(id=size_id) if size_id else None
+
+                    # Check if a cart item with the same product, color, and size already exists
+                    if models.Cart.objects.filter(
+                        user=request.user,
+                        product_id=prod_id,
+                        color=color,
+                        size=size
+                    ).exists():
+                        return JsonResponse({'status': "Item already in Cart"})
+                    else:
                         models.Cart.objects.create(
                             user=request.user,
                             product_id=prod_id,
@@ -89,9 +96,10 @@ def add_to_cart(request):
                             size=size
                         )
                         return JsonResponse({'status': "Product added to Cart"})
-                    else:
-                        return JsonResponse(
-                            {'status': "Only " + str(product_check.quantity) + " of this product is available"})
+                else:
+                    return JsonResponse(
+                        {'status': "Only " + str(product_check.quantity) + " of this product is available"}
+                    )
             else:
                 return JsonResponse({'status': "Something went wrong"})
         else:
