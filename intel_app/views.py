@@ -2177,6 +2177,8 @@ def cancel_mtn_transaction(request, pk, net):
         messages.info(request, "Unable to cancel transaction")
         return redirect('mtn-history')
 
+    transaction_to_be_canceled.delete()
+
     messages.success(request, "Transaction has been cancelled and money refunded into wallet")
 
     return redirect('mtn-history')

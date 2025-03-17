@@ -27,10 +27,8 @@ ishare_map = {
 
 
 def ref_generator():
-    now_time = datetime.now().strftime('%H%M%S')
-    secret = secrets.token_hex(9)
-
-    return f"Best{now_time}Plug{secret}GH".upper()
+    secret = secrets.token_hex(6)
+    return f"{secret}".upper()
 
 
 def top_up_ref_generator():
