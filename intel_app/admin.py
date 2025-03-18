@@ -98,6 +98,9 @@ admin.site.register(models.AgentTelecelBundlePrice)
 admin.site.register(models.SuperAgentTelecelBundlePrice)
 admin.site.register(models.TelecelTransaction, VodafoneTransactionAdmin)
 admin.site.register(models.WalletTransaction, WalletTransactionAdmin)
+admin.site.register(models.CheckerType)
+admin.site.register(models.ResultChecker)
+admin.site.register(models.ResultCheckerTransaction)
 
 
 #########################################################################
