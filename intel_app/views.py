@@ -1700,18 +1700,18 @@ def paystack_webhook(request):
                 slashed_amount = float(paid_amount) / 100
                 reference = r_data.get('reference')
 
-                if channel != "afa":
-                    rounded_real_amount = round(float(real_amount))
-                    rounded_paid_amount = round(float(slashed_amount))
-
-                    print(f"reeeeeeeaaaaaaaaal amount: {rounded_real_amount}")
-                    print(f"paaaaaaaaaaaaaiiddd amount: {rounded_paid_amount}")
-
-                    is_within_range = (rounded_real_amount - 5) <= rounded_paid_amount <= (rounded_real_amount + 5)
-
-                    if not is_within_range:
-                        print("not within range")
-                        return HttpResponse(200)
+                # if channel != "afa":
+                #     rounded_real_amount = round(float(real_amount))
+                #     rounded_paid_amount = round(float(slashed_amount))
+                #
+                #     print(f"reeeeeeeaaaaaaaaal amount: {rounded_real_amount}")
+                #     print(f"paaaaaaaaaaaaaiiddd amount: {rounded_paid_amount}")
+                #
+                #     is_within_range = (rounded_real_amount - 5) <= rounded_paid_amount <= (rounded_real_amount + 5)
+                #
+                #     if not is_within_range:
+                #         print("not within range")
+                #         return HttpResponse(200)
 
                 if channel == "ishare":
                     if user.status == "User":
