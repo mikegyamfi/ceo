@@ -1989,7 +1989,7 @@ def paystack_webhook(request):
                         # Example pseudo-SMS code:
                         try:
                             sms_headers = {
-                                'Authorization': 'Bearer <YOUR_SMS_API_KEY>',
+                                'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
                                 'Content-Type': 'application/json'
                             }
                             sms_url = 'https://webapp.usmsgh.com/api/sms/send'
@@ -2005,7 +2005,7 @@ def paystack_webhook(request):
 
                             sms_body = {
                                 'recipient': final_phone_number,
-                                'sender_id': 'GH BAY',
+                                'sender_id': 'BESTPLUG',
                                 'message': sms_message
                             }
                             response = requests.post(sms_url, params=sms_body, headers=sms_headers)
