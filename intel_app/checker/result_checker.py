@@ -101,70 +101,66 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
         checker_type = get_object_or_404(CheckerType, pk=checker_type_id)
         total_amount = float(checker_type.price) * float(quantity)
         user = request.user
+        #
+        # # Determine which payment method is triggered by a hidden input or button name
+        # payment_method = request.POST.get('payment_method', 'paystack')
+        # # e.g. if you have <button name="payment_method" value="wallet">Pay with Wallet</button>
+        #
+        # if payment_method == 'wallet':
+        #     # -------------------------------
+        #     # PAY WITH WALLET LOGIC
+        #     # -------------------------------
+        #     if user.wallet_balance < total_amount:
+        #         return JsonResponse({'status': "Insufficient wallet balance!"}, status=400)
+        #
+        #     # Deduct from wallet
+        #     user.wallet_balance -= total_amount
+        #     user.save()
+        #
+        #     # Simulate success and finalize
+        #     finalize_transaction(user, checker_type, quantity, total_amount, reference)
+        #     return JsonResponse({'status': "Wallet Payment Successful!"})
+        #
+        # else:
+        #     ...
+        amount_in_kobo = int(total_amount * 100)
 
-        # Determine which payment method is triggered by a hidden input or button name
-        payment_method = request.POST.get('payment_method', 'paystack')
-        # e.g. if you have <button name="payment_method" value="wallet">Pay with Wallet</button>
+        # Prepare the payload for Paystack "initialize transaction" endpoint
+        paystack_data = {
+            "email": user.email,
+            "amount": amount_in_kobo,
+            "reference": reference,
+            "callback_url": request.build_absolute_uri(
+                reverse('checker_types')  # e.g. /result-checkers/verify-payment/
+            ),
+            "metadata": {
+                "checker_type_name": checker_type.name,
+                "quantity": quantity,
+                "channel": "checker",  # so you know in webhook it’s a checker transaction
+            }
+        }
 
-        if payment_method == 'wallet':
-            # -------------------------------
-            # PAY WITH WALLET LOGIC
-            # -------------------------------
-            if user.wallet_balance < total_amount:
-                return JsonResponse({'status': "Insufficient wallet balance!"}, status=400)
+        headers = {
+            "Authorization": config('PAYSTACK_SECRET_KEY'),
+            "Content-Type": "application/json",
+        }
 
-            # Deduct from wallet
-            user.wallet_balance -= total_amount
-            user.save()
+        # Make request to Paystack to initialize the transaction
+        response = requests.post(
+            "https://api.paystack.co/transaction/initialize",
+            json=paystack_data,
+            headers=headers
+        )
+        data = response.json()
 
-            # Simulate success and finalize
-            finalize_transaction(user, checker_type, quantity, total_amount, reference)
-            return JsonResponse({'status': "Wallet Payment Successful!"})
-
+        if data.get('status') is True:
+            # We got an authorization URL
+            auth_url = data['data']['authorization_url']
+            # Redirect the user to Paystack
+            return JsonResponse({'redirect_url': auth_url}, status=200)
         else:
-            # -------------------------------
-            # PAY WITH PAYSTACK (REDIRECT)
-            # -------------------------------
-            # Convert to the smallest currency unit (kobo if NGN, pesewas if GHS, etc.)
-            # For GHS, Paystack also uses amount in kobo (like NGN), so multiply by 100
-            amount_in_kobo = int(total_amount * 100)
-
-            # Prepare the payload for Paystack "initialize transaction" endpoint
-            paystack_data = {
-                "email": user.email,
-                "amount": amount_in_kobo,
-                "reference": reference,
-                "callback_url": request.build_absolute_uri(
-                    reverse('verify_checker_payment')  # e.g. /result-checkers/verify-payment/
-                ),
-                "metadata": {
-                    "checker_type_name": checker_type.name,
-                    "quantity": quantity,
-                    "channel": "checker",  # so you know in webhook it’s a checker transaction
-                }
-            }
-
-            headers = {
-                "Authorization": config('PAYSTACK_SECRET_KEY'),
-                "Content-Type": "application/json",
-            }
-
-            # Make request to Paystack to initialize the transaction
-            response = requests.post(
-                "https://api.paystack.co/transaction/initialize",
-                json=paystack_data,
-                headers=headers
-            )
-            data = response.json()
-
-            if data.get('status') is True:
-                # We got an authorization URL
-                auth_url = data['data']['authorization_url']
-                # Redirect the user to Paystack
-                return JsonResponse({'redirect_url': auth_url}, status=200)
-            else:
-                error_message = data.get('message', 'Could not initialize payment.')
-                return JsonResponse({'status': False, 'message': error_message}, status=400)
+            error_message = data.get('message', 'Could not initialize payment.')
+            return JsonResponse({'status': False, 'message': error_message}, status=400)
 
 
 # 4. After returning from Paystack, verify payment

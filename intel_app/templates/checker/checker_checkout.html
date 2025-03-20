@@ -50,50 +50,50 @@
 
 {% block scripts %}
 <script>
-  const paystackForm = document.getElementById('payWithPaystackForm');
-  const walletForm = document.getElementById('walletForm');
-
-  // Handle Paystack form submission via AJAX
-  paystackForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    let formData = new FormData(paystackForm);
-
-    fetch("{% url 'checkout_checker' %}", {
-      method: "POST",
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-      body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.redirect_url) {
-        // If successful, we have a redirect_url from Paystack
-        window.location.href = data.redirect_url;
-      } else if (data.message) {
-        alert(data.message);
-      }
-    })
-    .catch(err => console.log(err));
-  });
-
-  // Handle Wallet form submission (optional)
-  walletForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    let formData = new FormData(walletForm);
-
-    fetch("{% url 'checkout_checker' %}", {
-      method: "POST",
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-      body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status) {
-        alert(data.status);
-        // maybe redirect to history
-        window.location.href = "{% url 'checker_history' %}";
-      }
-    })
-    .catch(err => console.log(err));
-  });
+  {#const paystackForm = document.getElementById('payWithPaystackForm');#}
+  {#const walletForm = document.getElementById('walletForm');#}
+  {##}
+  {#// Handle Paystack form submission via AJAX#}
+  {#paystackForm.addEventListener('submit', function(e) {#}
+  {#  e.preventDefault();#}
+  {#  let formData = new FormData(paystackForm);#}
+  {##}
+  {#  fetch("{% url 'checkout_checker' %}", {#}
+  {#    method: "POST",#}
+  {#    headers: { "X-Requested-With": "XMLHttpRequest" },#}
+  {#    body: formData#}
+  {#  })#}
+  {#  .then(res => res.json())#}
+  {#  .then(data => {#}
+  {#    if (data.redirect_url) {#}
+  {#      // If successful, we have a redirect_url from Paystack#}
+  {#      window.location.href = data.redirect_url;#}
+  {#    } else if (data.message) {#}
+  {#      alert(data.message);#}
+  {#    }#}
+  {#  })#}
+  {#  .catch(err => console.log(err));#}
+  {#});#}
+  {##}
+  {#// Handle Wallet form submission (optional)#}
+  {#walletForm.addEventListener('submit', function(e) {#}
+  {#  e.preventDefault();#}
+  {#  let formData = new FormData(walletForm);#}
+  {##}
+  {#  fetch("{% url 'checkout_checker' %}", {#}
+  {#    method: "POST",#}
+  {#    headers: { "X-Requested-With": "XMLHttpRequest" },#}
+  {#    body: formData#}
+  {#  })#}
+  {#  .then(res => res.json())#}
+  {#  .then(data => {#}
+  {#    if (data.status) {#}
+  {#      alert(data.status);#}
+  {#      // maybe redirect to history#}
+  {#      window.location.href = "{% url 'checker_history' %}";#}
+  {#    }#}
+  {#  })#}
+  {#  .catch(err => console.log(err));#}
+  {#});#}
 </script>
 {% endblock %}
