@@ -157,7 +157,7 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
             # We got an authorization URL
             auth_url = data['data']['authorization_url']
             # Redirect the user to Paystack
-            return JsonResponse({'redirect_url': auth_url}, status=200)
+            return redirect(auth_url)
         else:
             error_message = data.get('message', 'Could not initialize payment.')
             return JsonResponse({'status': False, 'message': error_message}, status=400)
