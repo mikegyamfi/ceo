@@ -141,7 +141,7 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
         }
 
         headers = {
-            "Authorization": config('PAYSTACK_SECRET_KEY'),
+            "Authorization": config('PAYSTACK_KEY'),
             "Content-Type": "application/json",
         }
 
