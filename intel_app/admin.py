@@ -101,6 +101,7 @@ admin.site.register(models.WalletTransaction, WalletTransactionAdmin)
 admin.site.register(models.CheckerType)
 admin.site.register(models.ResultChecker)
 admin.site.register(models.ResultCheckerTransaction)
+admin.site.register(models.Announcement)
 
 
 #########################################################################

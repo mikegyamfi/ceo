@@ -56,6 +56,7 @@
             <div class="dropdown-menu">
                 <a class="dropdown-item" href="{% url 'logout' %}">Log out</a>
                 <a class="dropdown-item" href="{% url 'checker_types' %}">Results Checker</a>
+                <a class="dropdown-item" href="{% url 'checker_history' %}">Checker History</a>
               <a class="dropdown-item" href="{% url 'orders' %}">Orders</a>
                 <a class="dropdown-item" href="{% url 'history' %}">Dashboard</a>
                 {% if request.user.is_superuser %}

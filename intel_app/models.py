@@ -522,6 +522,15 @@ class ResultCheckerTransaction(models.Model):
     amount = models.FloatField(null=False)
 
 
+class Announcement(models.Model):
+    title = models.CharField(max_length=200, null=True, blank=True)
+    message = models.CharField(max_length=500, null=True, blank=True)
+    link = models.URLField(null=True, blank=True)
+    active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.message
+
 
 
 

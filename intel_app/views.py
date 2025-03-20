@@ -27,109 +27,26 @@ from .models import CustomUser, MTNTransaction, TelecelTransaction, BigTimeTrans
 
 # Create your views here.
 def home(request):
-    today = timezone.now().date()
+    announcements = models.Announcement.objects.filter(active=True).values("title", "message", "link")
 
-    # Daily purchases (all networks, any status) for today
-    daily_mtn = MTNTransaction.objects.filter(transaction_date__date=today).count()
-    daily_telecel = TelecelTransaction.objects.filter(transaction_date__date=today).count()
-    daily_bigtime = BigTimeTransaction.objects.filter(transaction_date__date=today).count()
-    daily_ishare = IShareBundleTransaction.objects.filter(transaction_date__date=today).count()
-    daily_purchases = daily_mtn + daily_telecel + daily_bigtime + daily_ishare
+    # Process announcements to remove 'link' if it's empty or None
+    processed_announcements = []
+    for announcement in announcements:
+        if not announcement["link"] or announcement["link"].strip().lower() == "none":
+            del announcement["link"]  # Remove the link field if empty or None
+        processed_announcements.append(announcement)
 
-    # Completed transactions for today
-    completed_mtn = MTNTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
-    completed_telecel = TelecelTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
-    completed_bigtime = BigTimeTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
-    completed_ishare = IShareBundleTransaction.objects.filter(transaction_date__date=today, transaction_status="Completed").count()
-    completed_transactions = completed_mtn + completed_telecel + completed_bigtime + completed_ishare
+    context = {"announcements": processed_announcements}
 
-    # Total Sales (GHS) in last 24 hours (only from models with `amount`)
-    last_24_hours = timezone.now() - timedelta(hours=24)
-    total_sales_mtn = MTNTransaction.objects.filter(
-        transaction_date__gte=last_24_hours, transaction_status="Completed"
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    total_sales_telecel = TelecelTransaction.objects.filter(
-        transaction_date__gte=last_24_hours, transaction_status="Completed"
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    total_sales_bigtime = BigTimeTransaction.objects.filter(
-        transaction_date__gte=last_24_hours, transaction_status="Completed"
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    total_sales = total_sales_mtn + total_sales_telecel + total_sales_bigtime
+    if request.user.is_authenticated:
+        user = models.CustomUser.objects.get(id=request.user.id)
+        context["wallet"] = user.wallet
 
-    # 10-Day Data
-    day_labels = []
-    sales_data = []
-    transactions_data = []
-    for i in range(10):
-        day = today - timedelta(days=(9 - i))  # oldest to newest
-        day_str = day.strftime("%b %d")
-        day_labels.append(day_str)
+    if request.user.is_authenticated:
+        user = models.CustomUser.objects.get(id=request.user.id)
+        context["wallet"] = user.wallet
 
-        # Sum of completed amounts across 3 models with `amount`
-        day_mtn_sales = MTNTransaction.objects.filter(
-            transaction_date__date=day, transaction_status="Completed"
-        ).aggregate(s=Sum('amount'))['s'] or 0
-        day_telecel_sales = TelecelTransaction.objects.filter(
-            transaction_date__date=day, transaction_status="Completed"
-        ).aggregate(s=Sum('amount'))['s'] or 0
-        day_bigtime_sales = BigTimeTransaction.objects.filter(
-            transaction_date__date=day, transaction_status="Completed"
-        ).aggregate(s=Sum('amount'))['s'] or 0
-        daily_total_sales = day_mtn_sales + day_telecel_sales + day_bigtime_sales
-        sales_data.append(float(daily_total_sales))
-
-        # All transactions (any status) across all 4 models
-        count_mtn = MTNTransaction.objects.filter(transaction_date__date=day).count()
-        count_telecel = TelecelTransaction.objects.filter(transaction_date__date=day).count()
-        count_bigtime = BigTimeTransaction.objects.filter(transaction_date__date=day).count()
-        count_ishare = IShareBundleTransaction.objects.filter(transaction_date__date=day).count()
-        transactions_data.append(count_mtn + count_telecel + count_bigtime + count_ishare)
-
-    # Status distribution across all 4 models
-    completed_total = (
-        MTNTransaction.objects.filter(transaction_status="Completed").count() +
-        TelecelTransaction.objects.filter(transaction_status="Completed").count() +
-        BigTimeTransaction.objects.filter(transaction_status="Completed").count() +
-        IShareBundleTransaction.objects.filter(transaction_status="Completed").count()
-    )
-    pending_total = (
-        MTNTransaction.objects.filter(transaction_status="Pending").count() +
-        TelecelTransaction.objects.filter(transaction_status="Pending").count() +
-        BigTimeTransaction.objects.filter(transaction_status="Pending").count() +
-        IShareBundleTransaction.objects.filter(transaction_status="Pending").count()
-    )
-    failed_total = (
-        MTNTransaction.objects.filter(transaction_status="Failed").count() +
-        TelecelTransaction.objects.filter(transaction_status="Failed").count() +
-        BigTimeTransaction.objects.filter(transaction_status="Failed").count() +
-        IShareBundleTransaction.objects.filter(transaction_status="Failed").count()
-    )
-
-    status_labels = ["Completed", "Pending", "Failed"]
-    status_data = [completed_total, pending_total, failed_total]
-
-    # Network distribution = total transactions per model
-    mtn_count = MTNTransaction.objects.count()
-    telecel_count = TelecelTransaction.objects.count()
-    bigtime_count = BigTimeTransaction.objects.count()
-    ishare_count = IShareBundleTransaction.objects.count()
-    network_labels = ["MTN", "Telecel", "BigTime", "iShare"]
-    network_data = [mtn_count, telecel_count, bigtime_count, ishare_count]
-
-    context = {
-        'daily_purchases': daily_purchases,
-        'completed_transactions': completed_transactions,
-        'total_sales': total_sales,
-        'day_labels': day_labels,
-        'sales_data': sales_data,
-        'transactions_data': transactions_data,
-        'status_labels': status_labels,
-        'status_data': status_data,
-        'network_labels': network_labels,
-        'network_data': network_data,
-    }
-    # Render the homepage (index.html).
-    # The template can check `user.is_authenticated` and show hero vs. dashboard accordingly.
+    print(context)
     return render(request, "layouts/index.html", context)
 
 
