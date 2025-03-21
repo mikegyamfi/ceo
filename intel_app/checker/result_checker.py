@@ -110,60 +110,75 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
         #     # -------------------------------
         #     # PAY WITH WALLET LOGIC
         #     # -------------------------------
-        #     if user.wallet_balance < total_amount:
-        #         return JsonResponse({'status': "Insufficient wallet balance!"}, status=400)
-        #
-        #     # Deduct from wallet
-        #     user.wallet_balance -= total_amount
-        #     user.save()
-        #
-        #     # Simulate success and finalize
-        #     finalize_transaction(user, checker_type, quantity, total_amount, reference)
-        #     return JsonResponse({'status': "Wallet Payment Successful!"})
-        #
-        # else:
-        #     ...
-        amount_in_kobo = int(total_amount * 100)
+        if user.wallet_balance < total_amount:
+            return JsonResponse({'status': "Insufficient wallet balance!"}, status=400)
 
-        # Prepare the payload for Paystack "initialize transaction" endpoint
-        paystack_data = {
-            "email": user.email,
-            "amount": amount_in_kobo,
-            "reference": reference,
-            "callback_url": request.build_absolute_uri(
-                reverse('checker_types')  # e.g. /result-checkers/verify-payment/
-            ),
-            "metadata": {
-                "checker_type_name": checker_type.name,
-                "quantity": quantity,
-                "channel": "checker",  # so you know in webhook it’s a checker transaction
-            }
-        }
+        # Deduct from wallet
+        user.wallet_balance -= total_amount
+        user.save()
 
-        headers = {
-            "Authorization": config('PAYSTACK_KEY'),
-            "Content-Type": "application/json",
-        }
+        # Simulate success and finalize
+        try:
+            checker_type = checker_type
+        except CheckerType.DoesNotExist:
+            print("Checker type not found")
+            return redirect('buy_checker')
 
-        # Make request to Paystack to initialize the transaction
-        response = requests.post(
-            "https://api.paystack.co/transaction/initialize",
-            json=paystack_data,
-            headers=headers
-        )
-        data = response.json()
+        # Get enough unused pins for this checker_type
+        available_pins = ResultChecker.objects.filter(
+            checker_type=checker_type,
+            used=False
+        )[:quantity]
 
-        if data.get('status') is True:
-            # We got an authorization URL
-            auth_url = data['data']['authorization_url']
-            # Redirect the user to Paystack
-            return redirect(auth_url)
-        else:
-            error_message = data.get('message', 'Could not initialize payment.')
-            return JsonResponse({'status': False, 'message': error_message}, status=400)
+        # If not enough pins, do something
+        if len(available_pins) < quantity:
+            print("Not enough pins to fulfill the order.")
+            return redirect('buy_checker')
+
+        # Mark pins as used, create transactions, optionally send SMS
+        for pin_item in available_pins:
+            pin_item.used = True
+            pin_item.save()
+
+            # Create a transaction
+            ResultCheckerTransaction.objects.create(
+                user=user,
+                result_checker=pin_item,
+                amount=checker_type.price
+            )
+
+            # Send an SMS with the PIN and Serial, if you want
+            # Example pseudo-SMS code:
+            try:
+                sms_headers = {
+                    'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
+                    'Content-Type': 'application/json'
+                }
+                sms_url = 'https://webapp.usmsgh.com/api/sms/send'
+                sms_message = f"Hello {user.username},\n" \
+                              f"Here is your {checker_type.name} checker:\n" \
+                              f"PIN: {pin_item.pin}\n" \
+                              f"Serial: {pin_item.serial_number}\n" \
+                              f"Ref: {reference}\n" \
+                              f"Thank you for using GH BAY."
+
+                # user.phone or receiver or whichever phone number you want
+                final_phone_number = f"233{user.phone[1:]}" if user.phone.startswith('0') else user.phone
+
+                sms_body = {
+                    'recipient': final_phone_number,
+                    'sender_id': 'BESTPLUG',
+                    'message': sms_message
+                }
+                response = requests.post(sms_url, params=sms_body, headers=sms_headers)
+                print(response.text)
+            except Exception as e:
+                print("Could not send checker SMS: ", e)
+                return redirect('checker_history')
+
+        return redirect('checker_history')
 
 
-# 4. After returning from Paystack, verify payment
 class VerifyCheckerPaymentView(LoginRequiredMixin, View):
     """
     If your Paystack integration returns you here after successful payment,
