@@ -124,7 +124,7 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
                 checker_type = checker_type
             except CheckerType.DoesNotExist:
                 print("Checker type not found")
-                return redirect('buy_checker')
+                return redirect('checker_types')
 
             # Get enough unused pins for this checker_type
             available_pins = ResultChecker.objects.filter(
@@ -135,7 +135,7 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
             # If not enough pins, do something
             if int(available_pins.count()) < int(quantity):
                 print("Not enough pins to fulfill the order.")
-                return redirect('buy_checker')
+                return redirect('checker_types')
 
             # Mark pins as used, create transactions, optionally send SMS
             for pin_item in available_pins:
