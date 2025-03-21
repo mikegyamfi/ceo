@@ -128,10 +128,10 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
         available_pins = ResultChecker.objects.filter(
             checker_type=checker_type,
             used=False
-        )[:quantity]
+        )
 
         # If not enough pins, do something
-        if len(available_pins) < quantity:
+        if int(available_pins.count()) < int(quantity):
             print("Not enough pins to fulfill the order.")
             return redirect('buy_checker')
 
