@@ -37,6 +37,7 @@
           {% csrf_token %}
           <!-- Indicate we want to pay with paystack -->
           <input type="hidden" name="payment_method" value="paystack">
+            <p>Your Wallet Balance: {{ request.user.wallet }}</p>
           <button type="submit" class="btn btn-success mt-4">Pay with Wallet</button>
         </form>
 

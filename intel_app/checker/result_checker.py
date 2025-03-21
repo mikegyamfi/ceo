@@ -110,11 +110,11 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
         #     # -------------------------------
         #     # PAY WITH WALLET LOGIC
         #     # -------------------------------
-        if user.wallet_balance < total_amount:
+        if float(user.wallet) < float(total_amount):
             return JsonResponse({'status': "Insufficient wallet balance!"}, status=400)
 
         # Deduct from wallet
-        user.wallet_balance -= total_amount
+        user.wallet -= float(total_amount)
         user.save()
 
         # Simulate success and finalize
