@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'inc/header.html' %}
+
+<header>
+  {% include 'inc/header.html' %}
+  <div class="container mt-5">
+    <div class="page-banner">
+      <div class="row justify-content-center align-items-center h-100">
+        <div class="col-md-6">
+          <nav aria-label="Breadcrumb">
+            <ul class="breadcrumb justify-content-center py-0 bg-transparent">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+              <li class="breadcrumb-item"><a href="{% url 'services' %}">Services</a></li>
+              <li class="breadcrumb-item active">Checker History</li>
+            </ul>
+          </nav>
+          <h1 class="text-center">Checker Purchase History</h1>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="page-section" id="services">
+    <div class="container">
+      <h2>Your Purchased Checkers</h2>
+      <hr>
+
+      {% if transactions %}
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Checker Type</th>
+                <th>PIN</th>
+                <th>Serial Number</th>
+                <th>Date Bought</th>
+                <th>Amount (GHS)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for transaction in transactions %}
+                <tr>
+                  <td>{{ transaction.result_checker.checker_type.name }}</td>
+                  <td>{{ transaction.result_checker.pin }}</td>
+                  <td>{{ transaction.result_checker.serial_number }}</td>
+                  <td>{{ transaction.date_bought|date:"d M Y, h:i A" }}</td>
+                  <td>{{ transaction.amount }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p>You have not purchased any checker PINs yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</main>
+
+{% include 'inc/footer.html' %}
+{% endblock %}
+
+{% block scripts %}
+<!-- If you have any specific scripts for this page, include them here -->
+{% endblock %}
