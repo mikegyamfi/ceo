@@ -119,15 +119,29 @@ def viewcart(request):
 def update_cart(request):
     if request.method == 'POST':
         prod_id = int(request.POST.get('product_id'))
-        if models.Cart.objects.filter(user=request.user, product_id=prod_id):
-            product = models.Product.objects.get(id=prod_id)
-            product_qty = int(request.POST.get('product_qty'))
-            if product.quantity < product_qty:
-                return JsonResponse({'status': f'Only {product.quantity} of this product is available'})
-            cart = models.Cart.objects.get(product_id=prod_id, user=request.user)
-            cart.product_qty = product_qty
-            cart.save()
-            return JsonResponse({'status': 'Item quantity updated'})
+        color_id = request.POST.get('color_id')
+        size_id = request.POST.get('size_id')
+
+        try:
+            cart_item = models.Cart.objects.get(
+                user=request.user,
+                product_id=prod_id,
+                color_id=color_id if color_id else None,
+                size_id=size_id if size_id else None
+            )
+        except models.Cart.DoesNotExist:
+            return JsonResponse({'status': 'Item not found in cart'})
+
+        product = cart_item.product
+        new_qty = int(request.POST.get('product_qty'))
+
+        if product.quantity < new_qty:
+            return JsonResponse({'status': f'Only {product.quantity} of this product is available'})
+
+        cart_item.product_qty = new_qty
+        cart_item.save()
+        return JsonResponse({'status': 'Item quantity updated'})
+
     return redirect('shop')
 
 
@@ -135,10 +149,21 @@ def update_cart(request):
 def delete_cart_item(request):
     if request.method == 'POST':
         prod_id = int(request.POST.get('product_id'))
-        if models.Cart.objects.filter(user=request.user, product_id=prod_id):
-            cart_item = models.Cart.objects.get(product_id=prod_id, user=request.user)
+        color_id = request.POST.get('color_id')
+        size_id = request.POST.get('size_id')
+
+        try:
+            cart_item = models.Cart.objects.get(
+                user=request.user,
+                product_id=prod_id,
+                color_id=color_id if color_id else None,
+                size_id=size_id if size_id else None
+            )
             cart_item.delete()
-        return JsonResponse({'status': 'Item removed from cart'})
+            return JsonResponse({'status': 'Item removed from cart'})
+        except models.Cart.DoesNotExist:
+            return JsonResponse({'status': 'Item not found in cart'})
+
     return redirect('cart')
 
 

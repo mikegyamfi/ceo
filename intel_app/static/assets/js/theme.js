@@ -148,107 +148,114 @@ $(document).ready(function() {
 });
 
 
-$(document).ready(function() {
-   $(".inc-btn").click(function (e) {
+$(document).ready(function () {
+  // Increase quantity
+  $(document).on("click", ".inc-btn", function (e) {
     e.preventDefault();
-
-    let inc_value = $(this.closest(".product-data")).find(".qty-val").val();
-    let value = parseInt(inc_value, 10);
-    value = isNaN(value) ? 0 : value;
-
+    let $parent = $(this).closest(".product-data");
+    let value = parseInt($parent.find(".qty-val").val()) || 0;
     if (value < 10) {
-      value++;
-      $(this.closest(".product-data")).find(".qty-val").val(value);
+      $parent.find(".qty-val").val(value + 1);
     }
   });
 
-  $(".dec-btn").click(function (e) {
+  // Decrease quantity
+  $(document).on("click", ".dec-btn", function (e) {
     e.preventDefault();
-
-    let inc_value = $(this.closest(".product-data")).find(".qty-val").val();
-    let value = parseInt(inc_value, 10);
-    value = isNaN(value) ? 0 : value;
-
+    let $parent = $(this).closest(".product-data");
+    let value = parseInt($parent.find(".qty-val").val()) || 0;
     if (value > 1) {
-      value--;
-      $(this.closest(".product-data")).find(".qty-val").val(value);
+      $parent.find(".qty-val").val(value - 1);
     }
   });
 
-$(".addToCart").click(function (e) {
+  // Add to Cart
+  $(document).on("click", ".addToCart", function (e) {
     e.preventDefault();
 
-    let product_id = $(this).closest(".product-data").find(".prod_id").val();
-    let product_qty = $(this).closest(".product-data").find(".qty-val").val();
-    let color_id = $(this).closest(".product-data").find("select[name=color]").val();
-    console.log(color_id)
-    let size_id = $(this).closest(".product-data").find("select[name=size]").val();
-    console.log(size_id)
+    let $parent = $(this).closest(".product-data");
+    let product_id = $parent.find(".prod_id").val();
+    let product_qty = $parent.find(".qty-val").val();
+    let color_id = $parent.find("select[name=color]").val();
+    let size_id = $parent.find("select[name=size]").val();
     let token = $("input[name=csrfmiddlewaretoken]").val();
 
     $.ajax({
-        method: "POST",
-        url: "/add-to-cart/",
-        data: {
-            product_id: product_id,
-            product_qty: product_qty,
-            color_id: color_id,
-            size_id: size_id,
-            csrfmiddlewaretoken: token,
-        },
-        success: function (response) {
-            Toastify({
-                text: response.status,
-                duration: 5000
-            }).showToast();
-        },
+      method: "POST",
+      url: "/add-to-cart/",
+      data: {
+        product_id: product_id,
+        product_qty: product_qty,
+        color_id: color_id,
+        size_id: size_id,
+        csrfmiddlewaretoken: token,
+      },
+      success: function (response) {
+        Toastify({
+          text: response.status,
+          duration: 5000,
+        }).showToast();
+      },
     });
-});
+  });
 
-
-  $(".changeQty").click(function (e) {
+  // Update quantity in cart
+  $(document).on("click", ".changeQty", function (e) {
     e.preventDefault();
 
-    var product_id = $(this).closest(".product-data").find(".prod_id").val();
-    var product_qty = $(this).closest(".product-data").find(".qty-val").val();
-    var token = $("input[name=csrfmiddlewaretoken]").val();
+    let $parent = $(this).closest(".product-data");
+    let product_id = $parent.find(".prod_id").val();
+    let product_qty = $parent.find(".qty-val").val();
+    let color_id = $parent.find(".color_id").val();
+    let size_id = $parent.find(".size_id").val();
+    let token = $("input[name=csrfmiddlewaretoken]").val();
+
     $.ajax({
       method: "POST",
       url: "/update-cart",
       data: {
         product_id: product_id,
         product_qty: product_qty,
+        color_id: color_id,
+        size_id: size_id,
         csrfmiddlewaretoken: token,
       },
       success: function (response) {
         Toastify({
-        text: response.status,
-        duration: 5000
+          text: response.status,
+          duration: 5000,
         }).showToast();
       },
     });
   });
 
-    $(document).on("click", ".delete-cart-item", function (e) {
+  // Delete item from cart
+  $(document).on("click", ".delete-cart-item", function (e) {
     e.preventDefault();
 
-    var product_id = $(this).closest(".product-data").find(".prod_id").val();
-    var token = $("input[name=csrfmiddlewaretoken]").val();
+    let $parent = $(this).closest(".product-data");
+    let product_id = $parent.find(".prod_id").val();
+    let color_id = $parent.find(".color_id").val();
+    let size_id = $parent.find(".size_id").val();
+    let token = $("input[name=csrfmiddlewaretoken]").val();
 
     $.ajax({
       method: "POST",
       url: "/delete-cart-item",
       data: {
         product_id: product_id,
+        color_id: color_id,
+        size_id: size_id,
         csrfmiddlewaretoken: token,
       },
       success: function (response) {
         Toastify({
-        text: response.status,
-        duration: 5000
+          text: response.status,
+          duration: 5000,
         }).showToast();
         $(".cart_data").load(location.href + " .cart_data");
       },
     });
   });
 });
+

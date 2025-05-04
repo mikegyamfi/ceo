@@ -886,9 +886,9 @@ def mark_as_sent(request, pk, status):
                 'sender_id': 'BESTPLUG',
                 'message': sms_message
             }
-            response1 = requests.get(
-                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
-            print(response1.text)
+            # response1 = requests.get(
+            #     f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
+            # print(response1.text)
             return redirect('mtn_admin')
 
 
