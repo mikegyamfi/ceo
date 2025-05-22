@@ -10,6 +10,7 @@ from decouple import config
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group, Permission
+from django.db import transaction
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 import requests
@@ -185,44 +186,46 @@ def checkout(request):
                 if user.wallet == 0 or user.wallet is None or cart_total_price > user.wallet:
                     messages.info(request, "Not enough wallet balance")
                     return redirect('checkout')
-                order_form = form.save(commit=False)
-                order_form.payment_mode = "Wallet"
-                ref = 'BP' + str(random.randint(11111111, 99999999))
-                while models.Payment.objects.filter(reference=ref) is None:
+
+                with transaction.atomic():
+                    order_form = form.save(commit=False)
+                    order_form.payment_mode = "Wallet"
                     ref = 'BP' + str(random.randint(11111111, 99999999))
-                current_user = models.CustomUser.objects.filter(id=request.user.id).first()
-                order_form.total_price = cart_total_price
-                order_form.user = current_user
-                order_form.tracking_number = ref
-                order_form.save()
+                    while models.Payment.objects.filter(reference=ref) is None:
+                        ref = 'BP' + str(random.randint(11111111, 99999999))
+                    current_user = models.CustomUser.objects.filter(id=request.user.id).first()
+                    order_form.total_price = cart_total_price
+                    order_form.user = current_user
+                    order_form.tracking_number = ref
+                    order_form.save()
 
-                for item in new_order_items:
-                    models.OrderItem.objects.create(
-                        order=order_form,
-                        product=item.product,
-                        tracking_number=order_form.tracking_number,
-                        price=item.product.selling_price,
-                        quantity=item.product_qty,
-                        size=item.size,
-                        color=item.color,
+                    for item in new_order_items:
+                        models.OrderItem.objects.create(
+                            order=order_form,
+                            product=item.product,
+                            tracking_number=order_form.tracking_number,
+                            price=item.product.selling_price,
+                            quantity=item.product_qty,
+                            size=item.size,
+                            color=item.color,
+                        )
+                        order_product = models.Product.objects.filter(id=item.product_id).first()
+                        order_product.quantity -= item.product_qty
+                        order_product.save()
+
+                    models.Cart.objects.filter(user=request.user).delete()
+
+                    user.wallet -= cart_total_price
+                    user.save()
+
+                    new_wallet_transaction = models.WalletTransaction.objects.create(
+                        user=user,
+                        transaction_type="Debit",
+                        transaction_amount=float(cart_total_price),
+                        transaction_use="Commerce",
+                        new_balance=user.wallet
                     )
-                    order_product = models.Product.objects.filter(id=item.product_id).first()
-                    order_product.quantity -= item.product_qty
-                    order_product.save()
-
-                models.Cart.objects.filter(user=request.user).delete()
-
-                user.wallet -= cart_total_price
-                user.save()
-
-                new_wallet_transaction = models.WalletTransaction.objects.create(
-                    user=user,
-                    transaction_type="Debit",
-                    transaction_amount=float(cart_total_price),
-                    transaction_use="Commerce",
-                    new_balance=user.wallet
-                )
-                new_wallet_transaction.save()
+                    new_wallet_transaction.save()
 
                 sms_headers = {
                     'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
@@ -454,11 +457,12 @@ def cancel_pending_order(request, t_no):
     user = models.CustomUser.objects.get(id=request.user.id)
     if order.status == "Pending":
         if order.payment_mode == "Wallet":
-            total_price = order.total_price
-            print(total_price)
-            order.delete()
-            user.wallet += total_price
-            user.save()
+            with transaction.atomic():
+                total_price = order.total_price
+                print(total_price)
+                order.delete()
+                user.wallet += total_price
+                user.save()
             messages.success(request, "Order has been cancelled")
             return redirect('cart')
         else:

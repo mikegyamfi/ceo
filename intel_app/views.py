@@ -359,25 +359,26 @@ def mtn_pay_with_wallet(request):
 
         print(bundle)
         sms_message = f"An order has been placed. {bundle}MB for {phone_number}"
-        new_mtn_transaction = models.MTNTransaction.objects.create(
-            user=request.user,
-            bundle_number=phone_number,
-            offer=f"{bundle}MB",
-            reference=reference,
-            amount=amount
-        )
-        new_mtn_transaction.save()
-        user.wallet -= float(amount)
-        user.save()
+        with transaction.atomic():
+            new_mtn_transaction = models.MTNTransaction.objects.create(
+                user=request.user,
+                bundle_number=phone_number,
+                offer=f"{bundle}MB",
+                reference=reference,
+                amount=amount
+            )
+            new_mtn_transaction.save()
+            user.wallet -= float(amount)
+            user.save()
 
-        new_wallet_transaction = models.WalletTransaction.objects.create(
-            user=request.user,
-            transaction_type="Debit",
-            transaction_amount=float(amount),
-            transaction_use="MTN",
-            new_balance=user.wallet
-        )
-        new_wallet_transaction.save()
+            new_wallet_transaction = models.WalletTransaction.objects.create(
+                user=request.user,
+                transaction_type="Debit",
+                transaction_amount=float(amount),
+                transaction_use="MTN",
+                new_balance=user.wallet
+            )
+            new_wallet_transaction.save()
         # sms_body = {
         #     'recipient': "233540975553",
         #     'sender_id': 'BESTPLUG',
@@ -420,25 +421,26 @@ def telecel_pay_with_wallet(request):
 
         print(bundle)
         sms_message = f"An order has been placed. {bundle}MB for {phone_number}"
-        new_telecel_transaction = models.TelecelTransaction.objects.create(
-            user=request.user,
-            bundle_number=phone_number,
-            offer=f"{bundle}MB",
-            reference=reference,
-            amount=float(amount)
-        )
-        new_telecel_transaction.save()
-        user.wallet -= float(amount)
-        user.save()
+        with transaction.atomic():
+            new_telecel_transaction = models.TelecelTransaction.objects.create(
+                user=request.user,
+                bundle_number=phone_number,
+                offer=f"{bundle}MB",
+                reference=reference,
+                amount=float(amount)
+            )
+            new_telecel_transaction.save()
+            user.wallet -= float(amount)
+            user.save()
 
-        new_wallet_transaction = models.WalletTransaction.objects.create(
-            user=request.user,
-            transaction_type="Debit",
-            transaction_amount=float(amount),
-            transaction_use="Telecel",
-            new_balance=user.wallet
-        )
-        new_wallet_transaction.save()
+            new_wallet_transaction = models.WalletTransaction.objects.create(
+                user=request.user,
+                transaction_type="Debit",
+                transaction_amount=float(amount),
+                transaction_use="Telecel",
+                new_balance=user.wallet
+            )
+            new_wallet_transaction.save()
         # sms_body = {
         #     'recipient': "233540975553",
         #     'sender_id': 'BESTPLUG',
@@ -473,25 +475,27 @@ def big_time_pay_with_wallet(request):
         elif user.status == "Super Agent":
             bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(amount)).bundle_volume
         print(bundle)
-        new_mtn_transaction = models.BigTimeTransaction.objects.create(
-            user=request.user,
-            bundle_number=phone_number,
-            offer=f"{bundle}MB",
-            reference=reference,
-            amount=float(amount)
-        )
-        new_mtn_transaction.save()
-        user.wallet -= float(amount)
-        user.save()
 
-        new_wallet_transaction = models.WalletTransaction.objects.create(
-            user=request.user,
-            transaction_type="Debit",
-            transaction_amount=float(amount),
-            transaction_use="Big Time",
-            new_balance=user.wallet
-        )
-        new_wallet_transaction.save()
+        with transaction.atomic():
+            new_mtn_transaction = models.BigTimeTransaction.objects.create(
+                user=request.user,
+                bundle_number=phone_number,
+                offer=f"{bundle}MB",
+                reference=reference,
+                amount=float(amount)
+            )
+            new_mtn_transaction.save()
+            user.wallet -= float(amount)
+            user.save()
+
+            new_wallet_transaction = models.WalletTransaction.objects.create(
+                user=request.user,
+                transaction_type="Debit",
+                transaction_amount=float(amount),
+                transaction_use="Big Time",
+                new_balance=user.wallet
+            )
+            new_wallet_transaction.save()
 
         return JsonResponse({'status': "Your transaction will be completed shortly", 'icon': 'success'})
     return redirect('big_time')
@@ -663,28 +667,29 @@ def afa_registration_wallet(request):
         elif user.wallet <= 0 or user.wallet < float(amount):
             return JsonResponse(
                 {'status': f'Your wallet balance is low. Contact the admin to recharge.'})
+        
+        with transaction.atomic():
+            new_registration = models.AFARegistration.objects.create(
+                user=user,
+                reference=reference,
+                name=name,
+                phone_number=phone_number,
+                gh_card_number=card_number,
+                occupation=occupation,
+                date_of_birth=date_of_birth
+            )
+            new_registration.save()
+            user.wallet -= float(price)
+            user.save()
 
-        new_registration = models.AFARegistration.objects.create(
-            user=user,
-            reference=reference,
-            name=name,
-            phone_number=phone_number,
-            gh_card_number=card_number,
-            occupation=occupation,
-            date_of_birth=date_of_birth
-        )
-        new_registration.save()
-        user.wallet -= float(price)
-        user.save()
-
-        new_wallet_transaction = models.WalletTransaction.objects.create(
-            user=request.user,
-            transaction_type="Debit",
-            transaction_amount=float(amount),
-            transaction_use="AFA",
-            new_balance=user.wallet
-        )
-        new_wallet_transaction.save()
+            new_wallet_transaction = models.WalletTransaction.objects.create(
+                user=request.user,
+                transaction_type="Debit",
+                transaction_amount=float(amount),
+                transaction_use="AFA",
+                new_balance=user.wallet
+            )
+            new_wallet_transaction.save()
         return JsonResponse({'status': "Your transaction will be completed shortly", 'icon': 'success'})
     return redirect('home')
 
@@ -1256,19 +1261,21 @@ def credit_user_from_list(request, reference):
         print(user)
         print(user.phone)
         print(amount)
-        custom_user.wallet += amount
-        custom_user.save()
-        new_wallet_transaction = models.WalletTransaction.objects.create(
-            user=custom_user,
-            transaction_type="Credit",
-            transaction_amount=float(amount),
-            transaction_use="Top up",
-            new_balance=custom_user.wallet
-        )
-        new_wallet_transaction.save()
-        crediting.status = True
-        crediting.credited_at = datetime.now()
-        crediting.save()
+
+        with transaction.atomic():
+            custom_user.wallet += amount
+            custom_user.save()
+            new_wallet_transaction = models.WalletTransaction.objects.create(
+                user=custom_user,
+                transaction_type="Credit",
+                transaction_amount=float(amount),
+                transaction_use="Top up",
+                new_balance=custom_user.wallet
+            )
+            new_wallet_transaction.save()
+            crediting.status = True
+            crediting.credited_at = datetime.now()
+            crediting.save()
         sms_headers = {
             'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
             'Content-Type': 'application/json'
@@ -1851,26 +1858,26 @@ def paystack_webhook(request):
                     return HttpResponse(status=200)
                 elif channel == "topup":
                     amount = real_amount
+                    with transaction.atomic():
+                        user.wallet += float(amount)
+                        user.save()
 
-                    user.wallet += float(amount)
-                    user.save()
+                        new_topup = models.TopUpRequest.objects.create(
+                            user=user,
+                            reference=reference,
+                            amount=amount,
+                            status=True,
+                        )
+                        new_topup.save()
 
-                    new_topup = models.TopUpRequest.objects.create(
-                        user=user,
-                        reference=reference,
-                        amount=amount,
-                        status=True,
-                    )
-                    new_topup.save()
-
-                    new_wallet_transaction = models.WalletTransaction.objects.create(
-                        user=user,
-                        transaction_type="Credit",
-                        transaction_amount=float(amount),
-                        transaction_use="Top up (Paystack)",
-                        new_balance=user.wallet
-                    )
-                    new_wallet_transaction.save()
+                        new_wallet_transaction = models.WalletTransaction.objects.create(
+                            user=user,
+                            transaction_type="Credit",
+                            transaction_amount=float(amount),
+                            transaction_use="Top up (Paystack)",
+                            new_balance=user.wallet
+                        )
+                        new_wallet_transaction.save()
                     return JsonResponse({'status': "Wallet Credited"}, status=200)
                 elif channel == "commerce":
                     phone_number = metadata.get('phone_number')
@@ -1893,35 +1900,36 @@ def paystack_webhook(request):
                     if models.Order.objects.filter(tracking_number=reference, message=message,
                                                    payment_id=reference).exists():
                         return HttpResponse(status=200)
-                    order_form = models.Order.objects.create(
-                        user=user,
-                        full_name=name,
-                        email=order_mail,
-                        phone=phone_number,
-                        address=address,
-                        city=city,
-                        region=region,
-                        total_price=cart_total_price,
-                        payment_mode="Paystack",
-                        payment_id=reference,
-                        message=message,
-                        tracking_number=reference
-                    )
-                    order_form.save()
-
-                    for item in new_order_items:
-                        models.OrderItem.objects.create(
-                            order=order_form,
-                            product=item.product,
-                            tracking_number=order_form.tracking_number,
-                            price=item.product.selling_price,
-                            quantity=item.product_qty
+                    with transaction.atomic():
+                        order_form = models.Order.objects.create(
+                            user=user,
+                            full_name=name,
+                            email=order_mail,
+                            phone=phone_number,
+                            address=address,
+                            city=city,
+                            region=region,
+                            total_price=cart_total_price,
+                            payment_mode="Paystack",
+                            payment_id=reference,
+                            message=message,
+                            tracking_number=reference
                         )
-                        order_product = models.Product.objects.filter(id=item.product_id).first()
-                        order_product.quantity -= item.product_qty
-                        order_product.save()
+                        order_form.save()
 
-                    models.Cart.objects.filter(user=user).delete()
+                        for item in new_order_items:
+                            models.OrderItem.objects.create(
+                                order=order_form,
+                                product=item.product,
+                                tracking_number=order_form.tracking_number,
+                                price=item.product.selling_price,
+                                quantity=item.product_qty
+                            )
+                            order_product = models.Product.objects.filter(id=item.product_id).first()
+                            order_product.quantity -= item.product_qty
+                            order_product.save()
+
+                        models.Cart.objects.filter(user=user).delete()
 
                     sms_headers = {
                         'Authorization': 'Bearer 1334|wroIm5YnQD6hlZzd8POtLDXxl4vQodCZNorATYGX',
