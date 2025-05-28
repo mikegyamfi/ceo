@@ -1203,11 +1203,12 @@ def topup_info(request):
             fields = {
                 'email': user.email,
                 'amount': int(int(amount) * 100),
+                'reference': new_topup_request.reference,
                 'callback_url': "https://www.bestpluggh.com",
                 'metadata': {
                     'channel': "topup",
                     'real_amount': int(amount),
-                    'db_id': user.id
+                    'db_id': user.id,
                 }
             }
 
@@ -1846,25 +1847,23 @@ def paystack_webhook(request):
                         new_afa_txn.save()
                         return HttpResponse(status=200)
                     elif channel == "topup":
+                        if models.TopUpRequest.objects.filter(reference=reference, status=True).exists():
+                            return HttpResponse(status=200)
                         try:
                             amount = real_amount
                             with transaction.atomic():
                                 user.wallet += float(amount)
                                 user.save()
 
-                                new_topup = models.TopUpRequest.objects.create(
-                                    user=user,
-                                    reference=reference,
-                                    amount=amount,
-                                    status=True,
-                                )
-                                new_topup.save()
+                                topup_request = models.TopUpRequest.objects.get(reference=reference)
+                                topup_request.status = True
+                                topup_request.save()
 
                                 new_wallet_transaction = models.WalletTransaction.objects.create(
                                     user=user,
                                     transaction_type="Credit",
                                     transaction_amount=float(amount),
-                                    transaction_use="Top up (Paystack)",
+                                    transaction_use=f"Top up (Paystack) ({reference})",
                                     new_balance=user.wallet
                                 )
                                 new_wallet_transaction.save()

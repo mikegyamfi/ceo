@@ -4,6 +4,8 @@ import requests
 from datetime import datetime
 from decouple import config
 
+from intel_app.models import TopUpRequest
+
 ishare_map = {
     2: 50,
     4: 52,
@@ -32,10 +34,12 @@ def ref_generator():
 
 
 def top_up_ref_generator():
-    now_time = datetime.now().strftime('%H%M')
-    secret = secrets.token_hex(1)
-
-    return f"TOPUP-{now_time}{secret}".upper()
+    while True:
+        now_time = datetime.now().strftime('%H%M')
+        secret = secrets.token_hex(1)
+        ref = f"TOPUP-{now_time}{secret}".upper()
+        if not TopUpRequest.objects.filter(reference=ref).exists():
+            return ref
 
 
 def send_bundle(receiver, bundle_amount, reference):
