@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'inc/header.html' %}
+
+<header>
+  <div class="container mt-5">
+    <div class="page-banner">
+      <div class="row justify-content-center align-items-center h-100">
+        <div class="col-md-6">
+          <nav aria-label="Breadcrumb">
+            <ul class="breadcrumb justify-content-center py-0 bg-transparent">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+              <li class="breadcrumb-item active">Buy Currency</li>
+            </ul>
+          </nav>
+          <h1 class="text-center">Buy Foreign Currency</h1>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="page-section">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-body">
+              <p><strong>Your Wallet Balance:</strong> <span id="wallet-balance" class="font-weight-bold">GHS {{ request.user.wallet|default:0.0 }}</span></p>
+              <form method="POST" enctype="multipart/form-data" id="currency-form">
+                {% csrf_token %}
+                <div class="form-group">
+                  <label for="id_currency">Currency</label>
+                  {{ form.currency }}
+                </div>
+
+                <div class="form-group">
+                  <label for="exchange_rate_display">Exchange Rate (GHS ➝ Selected Currency)</label>
+                  <input type="text" id="exchange_rate_display" class="form-control" readonly>
+                </div>
+
+                <div class="form-group">
+                  <label for="id_amount_paid">Amount in GHS</label>
+                  {{ form.amount_paid }}
+                </div>
+
+                <div class="form-group">
+                  <label for="id_amount_paid">Recipient Full Name</label>
+                  {{ form.recipient_full_name }}
+                </div>
+
+                <div class="form-group">
+                  <label for="id_amount_received">You will receive</label>
+                  <input type="text" id="id_amount_received" class="form-control" readonly>
+                  <div id="wallet-warning" class="text-danger small mt-1 d-none">Your wallet balance is not enough for this transaction.</div>
+                  <div id="minimum-warning" class="text-danger small mt-1 d-none">Minimum amount is GHS 200.</div>
+                </div>
+
+                <div class="form-group">
+                  <label for="id_qr_code_for_payment">Upload QR Code</label>
+                  {{ form.qr_code_for_payment }}
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="checkout-btn">
+                  <span id="submit-text">Checkout</span>
+                  <span id="loading-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const currencyRates = {};
+  const userRateType = "{{ request.user.forex_status|default:'Personal' }}";
+  const userWallet = parseFloat("{{ request.user.wallet|default:0.0 }}");
+
+  {% for currency in form.fields.currency.queryset %}
+    currencyRates["{{ currency.id }}"] = {
+      "Personal": {{ currency.personal_rate|floatformat:6 }},
+      "Supplier": {{ currency.supplier_rate|default:currency.personal_rate|floatformat:6 }}
+    };
+  {% endfor %}
+
+  function updateExchangeRateAndReceivable() {
+    const currencyId = document.getElementById("id_currency").value;
+    const rate = currencyRates[currencyId]?.[userRateType] || 0;
+    const amountInput = document.getElementById("id_amount_paid");
+    const amount = parseFloat(amountInput.value);
+    const walletDisplay = document.getElementById("wallet-balance");
+    const walletWarning = document.getElementById("wallet-warning");
+    const minimumWarning = document.getElementById("minimum-warning");
+
+    // Update exchange rate field
+    document.getElementById("exchange_rate_display").value = rate ? `1 GHS = ${rate} ${document.getElementById("id_currency").selectedOptions[0].text}` : '';
+
+    // Calculate receivable
+    if (!isNaN(amount) && rate > 0) {
+      const receivable = (amount * rate).toFixed(2);
+      document.getElementById("id_amount_received").value = receivable;
+    } else {
+      document.getElementById("id_amount_received").value = "";
+    }
+
+    // Minimum check
+    if (!isNaN(amount) && amount < 200) {
+      amountInput.setCustomValidity("Minimum amount is GHS 200");
+      minimumWarning.classList.remove("d-none");
+    } else {
+      amountInput.setCustomValidity("");
+      minimumWarning.classList.add("d-none");
+    }
+
+    // Wallet check
+    if (!isNaN(amount) && userWallet < amount) {
+      walletDisplay.classList.remove("text-success");
+      walletDisplay.classList.add("text-danger");
+      walletWarning.classList.remove("d-none");
+    } else {
+      walletDisplay.classList.remove("text-danger");
+      walletDisplay.classList.add("text-success");
+      walletWarning.classList.add("d-none");
+    }
+  }
+
+  document.getElementById("id_currency").addEventListener("change", updateExchangeRateAndReceivable);
+  document.getElementById("id_amount_paid").addEventListener("input", updateExchangeRateAndReceivable);
+
+  document.getElementById("currency-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const amount = document.getElementById("id_amount_paid").value;
+
+    Swal.fire({
+      title: 'Confirm Transaction',
+      text: `You are about to spend GHS ${amount} which will be deducted from your wallet. Proceed?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, proceed',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        document.getElementById("submit-text").classList.add("d-none");
+        document.getElementById("loading-spinner").classList.remove("d-none");
+        document.getElementById("currency-form").submit();
+      }
+    });
+  });
+
+  window.addEventListener('DOMContentLoaded', updateExchangeRateAndReceivable);
+</script>
+
+{% include 'inc/footer.html' %}
+{% endblock %}

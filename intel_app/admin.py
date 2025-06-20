@@ -1,9 +1,12 @@
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
+from django.utils.timezone import localtime
+
 from . import models
 from import_export.admin import ExportActionMixin
 
-from .models import OrderItem, Order
+from .models import OrderItem, Order, CurrencyTransaction, CurrencyRateHistory, Currency, WalletTransaction
 
 
 # Register your models here.
@@ -178,5 +181,114 @@ class OrderItemAdmin(admin.ModelAdmin):
     list_filter = ("preorder_order_item_status", "color", "size")
 
 
+# Forex
 
 
+class CurrencyRateHistoryInline(admin.TabularInline):
+    model = CurrencyRateHistory
+    extra = 0
+    readonly_fields = ('last_update', 'last_update_rate')
+    can_delete = False
+    show_change_link = True
+
+
+@admin.register(Currency)
+class CurrencyAdmin(admin.ModelAdmin):
+    list_display = ("name", "short_name", "symbol", "rate_display", "active")
+    list_filter = ("active",)
+    search_fields = ("name", "short_name", "symbol")
+    inlines = [CurrencyRateHistoryInline]
+
+    def rate_display(self, obj):
+        return f"P:{obj.personal_rate}-S:{obj.supplier_rate}"
+    rate_display.short_description = "Current Rate"
+
+
+@admin.action(description="Mark selected as Completed")
+def mark_as_completed(modeladmin, request, queryset):
+    updated = queryset.update(status="Completed")
+    messages.success(request, f"{updated} transaction(s) marked as Completed.")
+
+
+@admin.action(description="Mark selected as Refunded")
+def mark_as_refunded(modeladmin, request, queryset):
+    refunded_count = 0
+    for tx in queryset:
+        if tx.status != "Refunded":
+            user = tx.user
+            user.wallet += tx.amount_paid
+            user.save()
+
+            WalletTransaction.objects.create(
+                user=user,
+                transaction_type="Credit",
+                transaction_use=f"Refund for currency transaction",
+                transaction_amount=tx.amount_paid,
+                new_balance=user.wallet,
+            )
+
+            tx.status = "Refunded"
+            tx.save()
+            refunded_count += 1
+    messages.success(request, f"{refunded_count} transaction(s) successfully refunded.")
+
+
+@admin.action(description="Mark selected as Pending")
+def mark_as_pending(modeladmin, request, queryset):
+    updated = queryset.update(status="Pending")
+    messages.success(request, f"{updated} transaction(s) marked as Pending.")
+
+
+@admin.action(description="Mark selected as Processing")
+def mark_as_processing(modeladmin, request, queryset):
+    updated = queryset.update(status="Processing")
+    messages.success(request, f"{updated} transaction(s) marked as Processing.")
+
+
+@admin.action(description="Mark selected as Canceled")
+def mark_as_canceled(modeladmin, request, queryset):
+    updated = queryset.update(status="Canceled")
+    messages.success(request, f"{updated} transaction(s) marked as Canceled.")
+
+
+class CurrencyTransactionForm(forms.ModelForm):
+    class Meta:
+        model = CurrencyTransaction
+        fields = "__all__"
+        widgets = {
+            'status': forms.Select(choices=CurrencyTransaction._meta.get_field('status').choices)
+        }
+
+
+@admin.register(CurrencyTransaction)
+class CurrencyTransactionAdmin(admin.ModelAdmin):
+    form = CurrencyTransactionForm
+
+    readonly_fields = ("qr_preview",)
+
+    fields = (
+        "user", "currency", "recipient_full_name", "current_currency_rate",
+        "amount_paid", "amount_to_be_received", "status",
+        "qr_code_for_payment", "qr_preview", "user_assigned"
+    )
+
+    list_display = (
+        "user", "currency", "current_currency_rate",
+        "amount_paid", "amount_to_be_received",
+        "status", "transaction_date_display", "user_assigned"
+    )
+    list_editable = ("status",)
+    list_filter = ("status", "currency", "transaction_date")
+    search_fields = ("user__first_name", "user__last_name", "user__email", "currency__name")
+    actions = [
+        mark_as_completed,
+        mark_as_refunded,
+        mark_as_pending,
+        mark_as_processing,
+        mark_as_canceled
+    ]
+    autocomplete_fields = ["currency", "user", "user_assigned"]
+
+    def transaction_date_display(self, obj):
+        return localtime(obj.transaction_date).strftime('%Y-%m-%d %H:%M')
+    transaction_date_display.short_description = "Transaction Date"

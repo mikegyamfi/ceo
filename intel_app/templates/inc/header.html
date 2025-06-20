@@ -57,10 +57,11 @@
                 <a class="dropdown-item" href="{% url 'logout' %}">Log out</a>
                 <a class="dropdown-item" href="{% url 'checker_types' %}">Results Checker</a>
                 <a class="dropdown-item" href="{% url 'checker_history' %}">Checker History</a>
+            <a class="dropdown-item" href="{% url 'currency_exchange_history' %}">Exchange History</a>
               <a class="dropdown-item" href="{% url 'orders' %}">Orders</a>
                 <a class="dropdown-item" href="{% url 'history' %}">Dashboard</a>
                 {% if request.user.is_superuser %}
-                <a class="dropdown-item" href="{% url 'mtn_admin' %}">MTN Admin</a>
+                <a class="dropdown-item" href="{% url 'mtn_admin' status='Pending' %}">MTN Admin</a>
               <a class="dropdown-item" href="{% url 'telecel_admin' %}">Telecel Admin</a>
               <a class="dropdown-item" href="{% url 'bt_admin' %}">Big Time Admin</a>
               <a class="dropdown-item" href="{% url 'afa_admin' %}">AFA Admin</a>

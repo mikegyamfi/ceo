@@ -67,17 +67,78 @@ INSTALLED_APPS = [
 # SELECT2_CACHE_BACKEND = "select2"
 
 JAZZMIN_SETTINGS = {
-    # title of the window (Will default to current_admin_site.site_title if absent or None)
+    # Basic branding
     "site_title": "BestPlug",
     "site_header": "BestPlug",
-    # "site_logo": "img/site/bestPay Logo.png",
-    # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
     "site_brand": "BestPlug",
-    "copyright": "Bestplug-CEOofWealth",
-    # "login_logo": "img/site/bp.png",
     "welcome_sign": "Welcome to the BestPlug Admin",
+    "copyright": "Bestplug-CEOofWealth",
     "custom_css": 'css/admin.css',
     "user_avatar": 'user',
+
+    # Sidebar order and grouping
+"order_with_respect_to": [
+        # First, keep Django’s built-in auth section
+        "auth",
+
+        # Then list every intel_app model in the order you want:
+        "intel_app.CustomUser",
+        "intel_app.AdminInfo",
+        "intel_app.Announcement",
+
+        "intel_app.Brand",
+        "intel_app.Category",
+        "intel_app.Size",
+        "intel_app.Color",
+        "intel_app.Product",
+        "intel_app.ProductImage",
+        "intel_app.Cart",
+
+        "intel_app.Order",
+        "intel_app.OrderItem",
+
+        "intel_app.Payment",
+        "intel_app.TopUpRequest",
+        "intel_app.WalletTransaction",
+
+        "intel_app.AgentIshareBundlePrice",
+        "intel_app.SuperAgentIshareBundlePrice",
+        "intel_app.IshareBundlePrice",
+        "intel_app.AgentBigTimeBundlePrice",
+        "intel_app.SuperAgentBigTimeBundlePrice",
+        "intel_app.BigTimeBundlePrice",
+        "intel_app.AgentTelecelBundlePrice",
+        "intel_app.SuperAgentTelecelBundlePrice",
+        "intel_app.TelecelBundlePrice",
+        "intel_app.MTNBundlePrice",
+        "intel_app.AgentMTNBundlePrice",
+        "intel_app.SuperAgentMTNBundlePrice",
+
+        "intel_app.AFARegistration",
+
+        "intel_app.IShareBundleTransaction",
+        "intel_app.BigTimeTransaction",
+        "intel_app.MTNTransaction",
+        "intel_app.TelecelTransaction",
+
+        "intel_app.CheckerType",
+        "intel_app.ResultChecker",
+        "intel_app.ResultCheckerTransaction",
+
+        "intel_app.Currency",
+        "intel_app.CurrencyRateHistory",
+        "intel_app.CurrencyTransaction",
+    ],
+
+    # (Optional) icons for each group
+    "icons": {
+        "intel_app.CustomUser": "fas fa-user",
+        "intel_app.Product": "fas fa-box",
+        "intel_app.Order": "fas fa-shopping-cart",
+        "intel_app.Payment": "fas fa-credit-card",
+        "intel_app.Currency": "fas fa-dollar-sign",
+        # …
+    },
 }
 
 MIDDLEWARE = [

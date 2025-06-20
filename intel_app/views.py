@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 from datetime import datetime, timedelta
+from io import BytesIO
 
 import pandas as pd
 from decouple import config
@@ -15,6 +16,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
+from openpyxl import Workbook
 
 from . import forms
 from django.contrib import messages
@@ -815,12 +817,89 @@ def verify_transaction(request, reference):
         return JsonResponse({'status': status})
 
 
+def change_excel_status(request, status, to_change_to):
+    transactions = models.MTNTransaction.objects.filter(
+        transaction_status=status) if to_change_to != "Completed" else models.MTNTransaction.objects.filter(
+        transaction_status=status).order_by('transaction_date')[:10]
+    for txn in transactions:
+        txn.transaction_status = to_change_to
+        txn.save()
+    messages.success(request, f"Status changed from {status} to {to_change_to}")
+    return redirect("mtn_admin", status=status)
+
+
+from django.db.models import FloatField
+from django.db.models.functions import Cast, Substr, Length
+
+
 @login_required(login_url='login')
-def admin_mtn_history(request):
-    if request.user.is_staff and request.user.is_superuser:
-        all_txns = models.MTNTransaction.objects.all().order_by('-transaction_date')[:1000]
-        context = {'txns': all_txns}
-        return render(request, "layouts/services/mtn_admin.html", context=context)
+def admin_mtn_history(request, status):
+    if not (request.user.is_staff and request.user.is_superuser):
+        messages.error(request, "Access Denied")
+        return redirect('mtn_admin', status=status)
+
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                # 1. Pull pending txns, ordered by numeric offer
+                queryset = (
+                    models.MTNTransaction.objects
+                    .filter(transaction_status="Pending")
+                    .annotate(
+                        offer_value=Cast(Substr('offer', 1, Length('offer') - 2), FloatField())
+                    )
+                    .order_by('-offer_value')
+                )
+
+                # 2. Build Excel in memory
+                wb = Workbook()
+                ws = wb.active
+                ws.title = "MTN Transactions"
+                ws.append(["RECIPIENT", "DATA (GB)"])  # header row
+
+                # 3. Fill rows, update status to “Processing”
+                for txn in queryset:
+                    recipient = f"0{txn.bundle_number}"
+                    mb = float(txn.offer.replace('MB', ''))
+                    gb = round(mb / 1000, 2)
+
+                    ws.append([recipient, gb])
+                    txn.transaction_status = "Processing"
+                    txn.save()
+
+                # 4. Save workbook to buffer
+                buffer = BytesIO()
+                wb.save(buffer)
+                buffer.seek(0)
+
+            # If we reach here, the atomic block succeeded & committed
+            filename = f"MTNTransactions_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+            response = HttpResponse(
+                buffer.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+
+        except Exception as e:
+            # Any exception rolls back all .save() calls inside the atomic block
+            messages.error(
+                request,
+                f"Export failed ({e}). No transactions were updated. Please try again."
+            )
+            return redirect('mtn_admin', status=status)
+
+    # GET: render the admin page
+    all_txns = (
+        models.MTNTransaction.objects
+        .filter(transaction_status=status)
+        .order_by('-transaction_date')[:800]
+    )
+    return render(
+        request,
+        "layouts/services/mtn_admin.html",
+        {'txns': all_txns, 'status': status}
+    )
 
 
 @login_required(login_url='login')

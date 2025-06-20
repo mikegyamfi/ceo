@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import CustomUser
+from django.core.exceptions import ValidationError
+
+from .models import CustomUser, CurrencyTransaction, Currency
 from . import models
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
@@ -147,6 +149,28 @@ class OrderDetailsForm(forms.ModelForm):
         model = models.Order
         fields = ('full_name', 'email', 'phone', 'address', 'city', 'message', 'region')
 
+
+class CurrencyTransactionForm(forms.ModelForm):
+    class Meta:
+        model = CurrencyTransaction
+        fields = ['currency', 'amount_paid', 'qr_code_for_payment', 'recipient_full_name']
+        widgets = {
+            'currency': forms.Select(attrs={'class': 'form-control'}),
+            'amount_paid': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'qr_code_for_payment': forms.FileInput(attrs={'class': 'form-control'}),
+            'recipient_full_name': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user')
+        super().__init__(*args, **kwargs)
+        self.fields['currency'].queryset = Currency.objects.filter(active=True)
+
+    def clean_qr_code_for_payment(self):
+        qr = self.cleaned_data.get("qr_code_for_payment")
+        if qr and qr.size > 3 * 1024 * 1024:
+            raise ValidationError("QR code image must be less than 3MB.")
+        return qr
 
 
 

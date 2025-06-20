@@ -3,6 +3,7 @@ from datetime import datetime
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils.html import format_html
 
 from intel_app.custom_storages import MediaStorage
 
@@ -29,6 +30,11 @@ class CustomUser(AbstractUser):
     status = models.CharField(max_length=250, null=False, blank=False, choices=choices)
     password1 = models.CharField(max_length=100, null=False, blank=False)
     password2 = models.CharField(max_length=100, null=False, blank=False)
+    forex_status_choices = (
+    ("Personal", "Personal"),
+    ("Supplier", "Supplier")
+    )
+    forex_status = models.CharField(max_length=250, null=True, blank=True, choices=forex_status_choices, default="Personal")
 
     def __str__(self):
         return self.username
@@ -532,5 +538,49 @@ class Announcement(models.Model):
         return self.message
 
 
+class Currency(models.Model):
+    name = models.CharField(null=False, blank=False, max_length=250)
+    short_name = models.CharField(max_length=250, null=True, blank=True)
+    symbol = models.CharField(max_length=300, null=True, blank=True)
+    personal_rate = models.FloatField()
+    supplier_rate = models.FloatField(null=True, blank=True)
+    active = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.name}({self.symbol})"
 
 
+class CurrencyRateHistory(models.Model):
+    currency = models.ForeignKey('Currency', on_delete=models.CASCADE)
+    last_update = models.DateTimeField(auto_now_add=True)
+    last_update_rate = models.FloatField(null=False)
+
+
+class CurrencyTransaction(models.Model):
+    currency = models.ForeignKey('Currency', on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    recipient_full_name = models.CharField(max_length=250, null=True, blank=True)
+    current_currency_rate = models.FloatField(null=False)
+    amount_paid = models.FloatField(null=False)
+    qr_code_for_payment = models.ImageField(upload_to='payment_qr_codes/', blank=True, null=True, storage=MediaStorage())
+    status_choices = (
+        ("Pending", "Pending"),
+        ("Processing", "Processing"),
+        ("Completed", "Completed"),
+        ("Canceled", "Canceled"),
+        ("Refunded", "Refunded"),
+    )
+    status = models.CharField(max_length=250, null=True, blank=True, choices=status_choices, default="Pending")
+    transaction_date = models.DateTimeField(auto_now_add=True)
+    user_assigned = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='provider')
+    amount_to_be_received = models.FloatField(null=False)
+
+    def qr_preview(self):
+        if self.qr_code_for_payment:
+            return format_html('<img src="{}" style="max-height: 150px;" />', self.qr_code_for_payment.url)
+        return "(No image)"
+
+    qr_preview.short_description = "QR Code Preview"
+
+    def __str__(self):
+        return f"{self.user.first_name}-{self.currency}"

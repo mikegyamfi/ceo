@@ -7,7 +7,7 @@ class MediaStorage(S3Boto3Storage):
     file_overwrite = False
 
 # from django.core.files.storage import FileSystemStorage
-#
+# #
 #
 # class MediaStorage(FileSystemStorage):
 #     # Optionally, you can override location if needed,

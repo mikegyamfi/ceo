@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'inc/header.html' %}
+
+<header>
+  <div class="container mt-5">
+    <div class="page-banner">
+      <div class="row justify-content-center align-items-center h-100">
+        <div class="col-md-6">
+          <nav aria-label="Breadcrumb">
+            <ul class="breadcrumb justify-content-center py-0 bg-transparent">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+              <li class="breadcrumb-item active">Transaction History</li>
+            </ul>
+          </nav>
+          <h1 class="text-center">Currency Transaction History</h1>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="container mt-5">
+    {% if transactions %}
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+          <thead class="thead-dark">
+            <tr>
+              <th>Date</th>
+              <th>Currency</th>
+              <th>Rate</th>
+              <th>GHS Paid</th>
+              <th>Receivable</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in transactions %}
+            <tr>
+              <td>{{ tx.transaction_date|date:"M d, Y H:i" }}</td>
+              <td>{{ tx.currency.name }}</td>
+              <td>{{ tx.current_currency_rate }}</td>
+              <td>GHS {{ tx.amount_paid }}</td>
+              <td>{{ tx.amount_to_be_received }} {{ tx.currency.short_name }}</td>
+              <td>
+                <span class="badge
+                  {% if tx.status == 'Completed' %}badge-success
+                  {% elif tx.status == 'Pending' %}badge-warning
+                  {% elif tx.status == 'Canceled' or tx.status == 'Refunded' %}badge-danger
+                  {% else %}badge-secondary{% endif %}">
+                  {{ tx.status }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted">You have no currency transactions yet.</p>
+    {% endif %}
+  </section>
+</main>
+
+{% include 'inc/footer.html' %}
+{% endblock %}

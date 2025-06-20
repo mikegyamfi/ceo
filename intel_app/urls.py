@@ -4,6 +4,7 @@ from django.conf.urls.static import static
 from . import views
 from .auth import authViews
 from .checker import result_checker
+from .forex import forex_views
 from .shop import shopViews
 
 urlpatterns = [
@@ -23,7 +24,8 @@ urlpatterns = [
                   path('history/afa', views.afa_history, name="afa-history"),
                   path('verify_transaction/<str:reference>/', views.verify_transaction, name="verify_transaction"),
 
-                  path('mtn_admin', views.admin_mtn_history, name='mtn_admin'),
+                  path('mtn_admin/<str:status>', views.admin_mtn_history, name='mtn_admin'),
+                  path('excel_status/<str:status>/<str:to_change_to>', views.change_excel_status, name='excel_status'),
                   path('telecel_admin', views.admin_telecel_history, name='telecel_admin'),
 
                   path('mark_as_sent/<int:pk>/<str:status>', views.mark_as_sent, name='mark_as_sent'),
@@ -85,6 +87,9 @@ urlpatterns = [
                   path('result-checkers/<int:pk>/buy/', result_checker.CheckerBuyView.as_view(), name='buy_checker'),
                   path('result-checkers/checkout/', result_checker.CheckerCheckoutView.as_view(), name='checkout_checker'),
                   path('result-checkers/history/', result_checker.CheckerHistoryView.as_view(), name='checker_history'),
+
+                  path('currency_exchange/', forex_views.currency_exchange_view, name='currency_exchange'),
+                  path('currency_exchange/history/', forex_views.transaction_history_view, name='currency_exchange_history'),
 
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
