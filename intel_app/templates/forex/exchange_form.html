@@ -106,16 +106,7 @@
       document.getElementById("id_amount_received").value = receivable;
     } else {
       document.getElementById("id_amount_received").value = "";
-    }
 
-    // Minimum check
-    if (!isNaN(amount) && amount < 200) {
-      amountInput.setCustomValidity("Minimum amount is GHS 200");
-      minimumWarning.classList.remove("d-none");
-    } else {
-      amountInput.setCustomValidity("");
-      minimumWarning.classList.add("d-none");
-    }
 
     // Wallet check
     if (!isNaN(amount) && userWallet < amount) {
