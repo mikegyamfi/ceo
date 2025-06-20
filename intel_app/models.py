@@ -45,6 +45,7 @@ class AdminInfo(models.Model):
     phone_number = models.BigIntegerField(null=True, blank=True)
     momo_number = models.PositiveBigIntegerField(null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
+    forex_minimum_amount = models.FloatField(null=False, blank=False, default=200)
     choices = (
         ("MTN Mobile Money", "MTN Mobile Money"),
         ("Vodafone Cash", "Vodafone Cash"),

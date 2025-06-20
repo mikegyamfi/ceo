@@ -1166,7 +1166,8 @@ def wallet_history(request):
         'transaction_date').reverse()[:1000]
     header = "Wallet Transactions"
     net = "wallet"
-    context = {'txns': user_wallet_transactions, "header": header, "net": net}
+    wallet = request.user.wallet
+    context = {'txns': user_wallet_transactions, "header": header, "net": net, 'wallet': wallet}
     return render(request, "layouts/wallet_history.html", context=context)
 
 

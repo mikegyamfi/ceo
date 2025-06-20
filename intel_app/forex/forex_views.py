@@ -4,8 +4,7 @@ from django.db import transaction
 from django.contrib.auth.decorators import login_required
 
 from intel_app.forms import CurrencyTransactionForm
-from intel_app.models import WalletTransaction, CurrencyTransaction
-
+from intel_app.models import WalletTransaction, CurrencyTransaction, AdminInfo
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -28,8 +27,10 @@ def currency_exchange_view(request):
             qr_code = form.cleaned_data['qr_code_for_payment']
             full_name = form.cleaned_data['recipient_full_name']
 
-            if amount_paid < 200:
-                messages.error(request, "Minimum transaction amount is GHS 200.")
+            minimum_amount = AdminInfo.objects.filter().first().forex_minimum_amount
+
+            if amount_paid < float(minimum_amount):
+                messages.error(request, f"Minimum transaction amount is GHS {minimum_amount}.")
                 return redirect('currency-exchange')
 
             # Select proper rate based on forex status

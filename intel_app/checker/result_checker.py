@@ -92,101 +92,51 @@ class CheckerCheckoutView(LoginRequiredMixin, View):
         return render(request, 'checker/checker_checkout.html', context)
 
     def post(self, request, *args, **kwargs):
-        """
-        Decide whether to pay with wallet or pay with Paystack.
-        For Paystack, we'll initialize the transaction server-side and redirect the user.
-        """
         checker_type_id = request.session.get('checker_type_id')
-        quantity = request.session.get('checker_quantity')
+        quantity = int(request.session.get('checker_quantity', 0))
         reference = request.session.get('checker_reference')
         checker_type = get_object_or_404(CheckerType, pk=checker_type_id)
-        total_amount = float(checker_type.price) * float(quantity)
+        total_amount = float(checker_type.price) * quantity
         user = request.user
-        #
-        # # Determine which payment method is triggered by a hidden input or button name
-        # payment_method = request.POST.get('payment_method', 'paystack')
-        # # e.g. if you have <button name="payment_method" value="wallet">Pay with Wallet</button>
-        #
-        # if payment_method == 'wallet':
-        #     # -------------------------------
-        #     # PAY WITH WALLET LOGIC
-        #     # -------------------------------
-        if float(user.wallet) < float(total_amount):
+
+        if user.wallet < total_amount:
             return JsonResponse({'status': "Insufficient wallet balance!"}, status=400)
 
         with transaction.atomic():
-            # Deduct from wallet
-            user.wallet -= float(total_amount)
+            user.wallet -= total_amount
             user.save()
 
-            # Simulate success and finalize
-            try:
-                checker_type = checker_type
-            except CheckerType.DoesNotExist:
-                print("Checker type not found")
-                return redirect('checker_types')
-
-            # Get enough unused pins for this checker_type
-            available_pins = ResultChecker.objects.filter(
-                checker_type=checker_type,
-                used=False
+            pins = list(
+                ResultChecker.objects
+                .select_for_update()
+                .filter(checker_type=checker_type, used=False)[:quantity]
             )
+            if len(pins) < quantity:
+                messages.error(request, "Not enough pins available to fulfill your order.")
+                # Raising here causes the atomic block to roll back
+                raise ValueError("Insufficient pins")
 
-            # If not enough pins, do something
-            if int(available_pins.count()) < int(quantity):
-                print("Not enough pins to fulfill the order.")
-                return redirect('checker_types')
+            # 3. For each pin: mark used + record both transactions
+            for pin in pins:
+                pin.used = True
+                pin.save()
 
-            # Mark pins as used, create transactions, optionally send SMS
-            for pin_item in available_pins:
-                pin_item.used = True
-                pin_item.save()
-
-                # Create a transaction
                 ResultCheckerTransaction.objects.create(
                     user=user,
-                    result_checker=pin_item,
+                    result_checker=pin,
                     amount=checker_type.price
                 )
 
-                new_wallet_transaction = WalletTransaction.objects.create(
+                WalletTransaction.objects.create(
                     user=user,
                     transaction_type="Debit",
-                    transaction_amount=float(total_amount),
+                    transaction_amount=checker_type.price,
                     transaction_use="Result Checker Purchase",
                     new_balance=user.wallet
                 )
-                new_wallet_transaction.save()
 
-                # Send an SMS with the PIN and Serial, if you want
-                # Example pseudo-SMS code:
-                try:
-                    sms_headers = {
-                        'Authorization': 'Bearer 1140|qFllpsDETDvxvpIUM74uQSVS2Iin3oVoi0SgzPyd',
-                        'Content-Type': 'application/json'
-                    }
-                    sms_url = 'https://webapp.usmsgh.com/api/sms/send'
-                    sms_message = f"Hello {user.username},\n" \
-                                  f"Here is your {checker_type.name} checker:\n" \
-                                  f"PIN: {pin_item.pin}\n" \
-                                  f"Serial: {pin_item.serial_number}\n" \
-                                  f"Ref: {reference}\n" \
-                                  f"Thank you for using GH BAY."
-
-                    # user.phone or receiver or whichever phone number you want
-                    final_phone_number = f"233{user.phone[1:]}" if user.phone.startswith('0') else user.phone
-
-                    sms_body = {
-                        'recipient': final_phone_number,
-                        'sender_id': 'BESTPLUG',
-                        'message': sms_message
-                    }
-                    response = requests.post(sms_url, params=sms_body, headers=sms_headers)
-                    print(response.text)
-                except Exception as e:
-                    print("Could not send checker SMS: ", e)
-                    return redirect('checker_history')
-
+        # If we get here, everything committed cleanly
+        messages.success(request, f"Successfully purchased {quantity} pins.")
         return redirect('checker_history')
 
 
