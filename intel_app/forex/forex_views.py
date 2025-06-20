@@ -18,6 +18,7 @@ from intel_app.models import CurrencyTransaction, WalletTransaction
 @login_required
 def currency_exchange_view(request):
     user = request.user
+    minimum_amount = AdminInfo.objects.filter().first().forex_minimum_amount
 
     if request.method == 'POST':
         form = CurrencyTransactionForm(request.POST, request.FILES, user=user)
@@ -85,7 +86,7 @@ def currency_exchange_view(request):
     else:
         form = CurrencyTransactionForm(user=user)
 
-    return render(request, 'forex/exchange_form.html', {'form': form})
+    return render(request, 'forex/exchange_form.html', {'form': form, 'minimum_amount': minimum_amount})
 
 
 @login_required
