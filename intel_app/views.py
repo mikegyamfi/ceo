@@ -943,17 +943,17 @@ def mark_as_sent(request, pk, status):
             txn.transaction_status = "Processing"
             txn.save()
             messages.success(request, f"Transaction Processed")
-            return redirect('mtn_admin')
+            return redirect("mtn_admin", status="Pending")
         elif status == "Cancelled":
             txn.transaction_status = "Cancelled"
             txn.save()
             messages.success(request, f"Transaction Cancelled")
-            return redirect('mtn_admin')
+            return redirect("mtn_admin", status="Pending")
         elif status == "Refunded":
             txn.transaction_status = "Refunded"
             txn.save()
             messages.success(request, f"Transaction Refunded")
-            return redirect('mtn_admin')
+            return redirect("mtn_admin", status="Pending")
         else:
             txn.transaction_status = "Completed"
             txn.save()
@@ -973,7 +973,7 @@ def mark_as_sent(request, pk, status):
             # response1 = requests.get(
             #     f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0{txn.user.phone}&from=BESTPLUG&sms={sms_message}")
             # print(response1.text)
-            return redirect('mtn_admin')
+            return redirect("mtn_admin", status=status)
 
 
 @login_required(login_url='login')
