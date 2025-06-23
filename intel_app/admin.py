@@ -6,7 +6,8 @@ from django.utils.timezone import localtime
 from . import models
 from import_export.admin import ExportActionMixin
 
-from .models import OrderItem, Order, CurrencyTransaction, CurrencyRateHistory, Currency, WalletTransaction
+from .models import OrderItem, Order, CurrencyTransaction, CurrencyRateHistory, Currency, WalletTransaction, \
+    CheckerType, ResultChecker, ResultCheckerTransaction
 
 
 # Register your models here.
@@ -27,14 +28,14 @@ class CustomUserAdmin(ExportActionMixin, UserAdmin):
 
     add_fieldsets = (
         (None, {
-            'classes': ('wide', ),
+            'classes': ('wide',),
             'fields': ('username', 'password1', 'password2', 'wallet')
         }),)
-    
+
 
 class IShareBundleTransactionAdmin(admin.ModelAdmin):
     list_display = ['user', 'bundle_number', 'offer', 'reference', 'transaction_status', 'transaction_date']
-    search_fields = ['reference', 'bundle_number', 'user__username',]
+    search_fields = ['reference', 'bundle_number', 'user__username', ]
 
 
 class MTNTransactionAdmin(admin.ModelAdmin):
@@ -81,7 +82,6 @@ class WalletTransactionAdmin(admin.ModelAdmin):
     search_fields = ['transaction_type', 'user__username', 'transaction_amount', 'transaction_use']
 
 
-
 admin.site.register(models.CustomUser, CustomUserAdmin)
 admin.site.register(models.IShareBundleTransaction, IShareBundleTransactionAdmin)
 admin.site.register(models.MTNTransaction, MTNTransactionAdmin)
@@ -104,11 +104,32 @@ admin.site.register(models.AgentTelecelBundlePrice)
 admin.site.register(models.SuperAgentTelecelBundlePrice)
 admin.site.register(models.TelecelTransaction, VodafoneTransactionAdmin)
 admin.site.register(models.WalletTransaction, WalletTransactionAdmin)
-admin.site.register(models.CheckerType)
-admin.site.register(models.ResultChecker)
-admin.site.register(models.ResultCheckerTransaction)
-admin.site.register(models.Announcement)
 
+
+@admin.register(CheckerType)
+class CheckerTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price')
+    search_fields = ('name',)
+
+
+@admin.register(ResultChecker)
+class ResultCheckerAdmin(admin.ModelAdmin):
+    list_display = ('pin', 'serial_number', 'checker_type', 'used', 'date_added')
+    list_filter = ('checker_type', 'used', 'date_added')
+    search_fields = ('pin', 'serial_number')
+    list_per_page = 25
+
+
+@admin.register(ResultCheckerTransaction)
+class ResultCheckerTransactionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'result_checker', 'amount', 'date_bought')
+    list_filter = ('user', 'date_bought')
+    search_fields = ('user__username', 'result_checker__pin')
+    raw_id_fields = ('user', 'result_checker')
+    date_hierarchy = 'date_bought'
+
+
+admin.site.register(models.Announcement)
 
 #########################################################################
 admin.site.register(models.Category)
@@ -201,6 +222,7 @@ class CurrencyAdmin(admin.ModelAdmin):
 
     def rate_display(self, obj):
         return f"P:{obj.personal_rate}-S:{obj.supplier_rate}"
+
     rate_display.short_description = "Current Rate"
 
 
@@ -291,4 +313,5 @@ class CurrencyTransactionAdmin(admin.ModelAdmin):
 
     def transaction_date_display(self, obj):
         return localtime(obj.transaction_date).strftime('%Y-%m-%d %H:%M')
+
     transaction_date_display.short_description = "Transaction Date"
