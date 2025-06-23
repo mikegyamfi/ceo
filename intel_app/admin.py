@@ -114,7 +114,7 @@ class CheckerTypeAdmin(admin.ModelAdmin):
 
 @admin.register(ResultChecker)
 class ResultCheckerAdmin(admin.ModelAdmin):
-    list_display = ('pin', 'serial_number', 'checker_type', 'used', 'date_added')
+    list_display = ('pin', 'serial_number', 'checker_type__name', 'used', 'date_added')
     list_filter = ('checker_type', 'used', 'date_added')
     search_fields = ('pin', 'serial_number')
     list_per_page = 25
@@ -122,7 +122,7 @@ class ResultCheckerAdmin(admin.ModelAdmin):
 
 @admin.register(ResultCheckerTransaction)
 class ResultCheckerTransactionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'result_checker', 'amount', 'date_bought')
+    list_display = ('user', 'result_checker__checker_type', 'amount', 'date_bought')
     list_filter = ('user', 'date_bought')
     search_fields = ('user__username', 'result_checker__pin')
     raw_id_fields = ('user', 'result_checker')

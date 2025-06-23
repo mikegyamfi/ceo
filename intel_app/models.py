@@ -519,7 +519,7 @@ class ResultChecker(models.Model):
     date_added = models.DateTimeField(auto_now_add=True)
 
     def _str_(self):
-        return f"{self.date_added} - {self.pin} - {self.serial_number}"
+        return f"{self.checker_type.name} - {self.pin} - {self.serial_number}"
 
 
 class ResultCheckerTransaction(models.Model):
