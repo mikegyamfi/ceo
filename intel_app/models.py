@@ -507,7 +507,7 @@ class CheckerType(models.Model):
     description = models.CharField(max_length=250, null=True, blank=True)
     price = models.FloatField(null=False)
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
 
@@ -518,8 +518,8 @@ class ResultChecker(models.Model):
     used = models.BooleanField(default=False)
     date_added = models.DateTimeField(auto_now_add=True)
 
-    def _str_(self):
-        return f"{self.checker_type.name} - {self.pin} - {self.serial_number}"
+    def __str__(self):
+        return f"{self.checker_type.name} — {self.pin} / {self.serial_number}"
 
 
 class ResultCheckerTransaction(models.Model):
@@ -527,6 +527,9 @@ class ResultCheckerTransaction(models.Model):
     result_checker = models.ForeignKey(ResultChecker, on_delete=models.CASCADE)
     date_bought = models.DateTimeField(auto_now_add=True)
     amount = models.FloatField(null=False)
+
+    def __str__(self):
+        return f"{self.user.username} bought {self.result_checker.pin} on {self.date_bought.date()}"
 
 
 class Announcement(models.Model):
