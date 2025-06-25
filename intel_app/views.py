@@ -842,42 +842,69 @@ def admin_mtn_history(request, status):
 
     if request.method == "POST":
         try:
+            # wrap in atomic so that pending→processing updates roll back on error
             with transaction.atomic():
                 start_date = request.POST.get('start_date')
-                end_date = request.POST.get('end_date')
+                end_date   = request.POST.get('end_date')
 
-                queryset = models.MTNTransaction.objects.filter(transaction_status="Pending")
+                # Branch: date-range provided → export all statuses in range, no updates
+                if start_date or end_date:
+                    qs = models.MTNTransaction.objects.all()
 
-                if start_date:
-                    start_dt = make_aware(parse_datetime(start_date))
-                    queryset = queryset.filter(transaction_date__gte=start_dt)
-                if end_date:
-                    end_dt = make_aware(parse_datetime(end_date))
-                    queryset = queryset.filter(transaction_date__lte=end_dt)
+                    if start_date:
+                        start_dt = make_aware(parse_datetime(start_date))
+                        qs = qs.filter(transaction_date__gte=start_dt)
+                    if end_date:
+                        end_dt = make_aware(parse_datetime(end_date))
+                        qs = qs.filter(transaction_date__lte=end_dt)
 
-                queryset = queryset.annotate(
-                    offer_value=Cast(Substr('offer', 1, Length('offer') - 2), FloatField())
-                ).order_by('-offer_value')
+                    # order by date desc for readability
+                    qs = qs.order_by('-transaction_date')
 
+                    should_update = False
+
+                # No date-range → export only pending, marking them Processing
+                else:
+                    qs = (
+                        models.MTNTransaction.objects
+                        .filter(transaction_status="Pending")
+                        .annotate(
+                            offer_value=Cast(
+                                Substr('offer', 1, Length('offer') - 2),
+                                FloatField()
+                            )
+                        )
+                        .order_by('-offer_value')
+                    )
+                    should_update = True
+
+                # build workbook
                 wb = Workbook()
                 ws = wb.active
                 ws.title = "MTN Transactions"
-                ws.append(["RECIPIENT", "DATA (GB)"])  # header
+                ws.append(["RECIPIENT", "DATA (GB)", "STATUS", "DATE"])  # add columns as you like
 
-                for txn in queryset:
+                for txn in qs:
                     recipient = f"0{txn.bundle_number}"
                     mb = float(txn.offer.replace('MB', ''))
                     gb = round(mb / 1000, 2)
 
-                    ws.append([recipient, gb])
-                    txn.transaction_status = "Processing"
-                    txn.save()
+                    ws.append([
+                        recipient,
+                        gb,
+                        txn.transaction_status,
+                        txn.transaction_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    ])
 
+                    if should_update:
+                        txn.transaction_status = "Processing"
+                        txn.save()
+
+                # stream back XLSX
                 buffer = BytesIO()
                 wb.save(buffer)
                 buffer.seek(0)
-
-                filename = f"MTNTransactions_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+                filename = f"MTNTransactions_{datetime.now():%Y-%m-%d_%H-%M-%S}.xlsx"
                 response = HttpResponse(
                     buffer.getvalue(),
                     content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -889,6 +916,7 @@ def admin_mtn_history(request, status):
             messages.error(request, f"Export failed ({e}). No transactions were updated.")
             return redirect('mtn_admin', status=status)
 
+    # GET: show up to 800 of whichever status you're viewing
     all_txns = (
         models.MTNTransaction.objects
         .filter(transaction_status=status)
