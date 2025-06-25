@@ -13,7 +13,7 @@ from .models import OrderItem, Order, CurrencyTransaction, CurrencyRateHistory, 
 # Register your models here.
 class CustomUserAdmin(ExportActionMixin, UserAdmin):
     list_display = ['first_name', 'last_name', 'username', 'email', 'wallet', 'phone', 'status']
-    list_filter = ['status']
+    list_filter = ('is_active', 'is_staff', 'is_superuser', 'status')
 
     fieldsets = (
         *UserAdmin.fieldsets,
