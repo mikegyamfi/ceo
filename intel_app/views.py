@@ -14,7 +14,9 @@ from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 import requests
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.http import urlsafe_base64_encode
+from django.utils.timezone import make_aware
 from django.views.decorators.csrf import csrf_exempt
 from openpyxl import Workbook
 
@@ -841,23 +843,27 @@ def admin_mtn_history(request, status):
     if request.method == "POST":
         try:
             with transaction.atomic():
-                # 1. Pull pending txns, ordered by numeric offer
-                queryset = (
-                    models.MTNTransaction.objects
-                    .filter(transaction_status="Pending")
-                    .annotate(
-                        offer_value=Cast(Substr('offer', 1, Length('offer') - 2), FloatField())
-                    )
-                    .order_by('-offer_value')
-                )
+                start_date = request.POST.get('start_date')
+                end_date = request.POST.get('end_date')
 
-                # 2. Build Excel in memory
+                queryset = models.MTNTransaction.objects.filter(transaction_status="Pending")
+
+                if start_date:
+                    start_dt = make_aware(parse_datetime(start_date))
+                    queryset = queryset.filter(transaction_date__gte=start_dt)
+                if end_date:
+                    end_dt = make_aware(parse_datetime(end_date))
+                    queryset = queryset.filter(transaction_date__lte=end_dt)
+
+                queryset = queryset.annotate(
+                    offer_value=Cast(Substr('offer', 1, Length('offer') - 2), FloatField())
+                ).order_by('-offer_value')
+
                 wb = Workbook()
                 ws = wb.active
                 ws.title = "MTN Transactions"
-                ws.append(["RECIPIENT", "DATA (GB)"])  # header row
+                ws.append(["RECIPIENT", "DATA (GB)"])  # header
 
-                # 3. Fill rows, update status to “Processing”
                 for txn in queryset:
                     recipient = f"0{txn.bundle_number}"
                     mb = float(txn.offer.replace('MB', ''))
@@ -867,29 +873,22 @@ def admin_mtn_history(request, status):
                     txn.transaction_status = "Processing"
                     txn.save()
 
-                # 4. Save workbook to buffer
                 buffer = BytesIO()
                 wb.save(buffer)
                 buffer.seek(0)
 
-            # If we reach here, the atomic block succeeded & committed
-            filename = f"MTNTransactions_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
-            response = HttpResponse(
-                buffer.getvalue(),
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
+                filename = f"MTNTransactions_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+                response = HttpResponse(
+                    buffer.getvalue(),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                return response
 
         except Exception as e:
-            # Any exception rolls back all .save() calls inside the atomic block
-            messages.error(
-                request,
-                f"Export failed ({e}). No transactions were updated. Please try again."
-            )
+            messages.error(request, f"Export failed ({e}). No transactions were updated.")
             return redirect('mtn_admin', status=status)
 
-    # GET: render the admin page
     all_txns = (
         models.MTNTransaction.objects
         .filter(transaction_status=status)

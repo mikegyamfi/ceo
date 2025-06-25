@@ -21,11 +21,19 @@
 
                 {% if status == "Pending" %}
                 <div class="row my-3 justify-content-center">
-                    <form method="post" action="" class="row justify-content-center">
-                        {% csrf_token %}
-                        <button class="btn btn-primary" type="submit">Export Pending</button>
-                    </form>
-                </div>
+  <form method="post" action="" class="row justify-content-center">
+    {% csrf_token %}
+    <div class="col-md-4 mb-2">
+      <input type="datetime-local" name="start_date" class="form-control" placeholder="Start datetime">
+    </div>
+    <div class="col-md-4 mb-2">
+      <input type="datetime-local" name="end_date" class="form-control" placeholder="End datetime">
+    </div>
+    <div class="col-md-4 mb-2">
+      <button class="btn btn-primary w-100" type="submit">Export Pending</button>
+    </div>
+  </form>
+</div>
                 {% endif %}
 
                 {% if status == "Processing" %}
