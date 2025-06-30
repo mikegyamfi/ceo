@@ -1,8 +1,10 @@
+import requests
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import transaction
 from django.contrib.auth.decorators import login_required
 
+from intel_app import models
 from intel_app.forms import CurrencyTransactionForm
 from intel_app.models import WalletTransaction, CurrencyTransaction, AdminInfo
 
@@ -70,6 +72,17 @@ def currency_exchange_view(request):
                         transaction_amount=amount_paid,
                         new_balance=user.wallet
                     )
+
+                    sms_message = "New forex transaction available"
+
+                    if models.AdminInfo.objects.get().send_sms_for_forex:
+                        try:
+                            response1 = requests.get(
+                                f"https://sms.arkesel.com/sms/api?action=send-sms&api_key=OnBuSjBXc1pqN0xrQXIxU1A=&to=0555159290&from=BESTPLUG&sms={sms_message}")
+                            print(response1.text)
+                        except Exception as e:
+                            print(e)
+                            pass
 
                     messages.success(
                         request,

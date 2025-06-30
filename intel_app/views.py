@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from io import BytesIO
 
 import pandas as pd
@@ -671,7 +671,7 @@ def afa_registration_wallet(request):
         elif user.wallet <= 0 or user.wallet < float(amount):
             return JsonResponse(
                 {'status': f'Your wallet balance is low. Contact the admin to recharge.'})
-        
+
         with transaction.atomic():
             new_registration = models.AFARegistration.objects.create(
                 user=user,
@@ -834,98 +834,130 @@ from django.db.models import FloatField
 from django.db.models.functions import Cast, Substr, Length
 
 
+def _parse_frontend_dt(raw: str, *, is_end=False):
+    """
+    Accepts either:
+      • YYYY-MM-DD (date input)
+      • YYYY-MM-DDTHH:MM (datetime-local input)
+    Returns an aware datetime or None if parsing fails.
+    If is_end=True and only a date is supplied, snaps to 23:59:59
+    so the whole day is included in the range.
+    """
+    if not raw:
+        return None
+
+    normalised = raw.replace("T", " ")
+
+    dt = parse_datetime(normalised)
+    if dt is None:
+        try:
+            dt_date = datetime.strptime(normalised, "%Y-%m-%d").date()
+            dt = datetime.combine(dt_date, time.max if is_end else time.min)
+        except ValueError:
+            return None
+
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt)
+
+    return dt
+
+
 @login_required(login_url='login')
 def admin_mtn_history(request, status):
     if not (request.user.is_staff and request.user.is_superuser):
         messages.error(request, "Access Denied")
-        return redirect('mtn_admin', status=status)
+        return redirect("mtn_admin", status=status)
 
     if request.method == "POST":
         try:
-            # wrap in atomic so that pending→processing updates roll back on error
             with transaction.atomic():
-                start_date = request.POST.get('start_date')
-                end_date   = request.POST.get('end_date')
+                start_raw = request.POST.get("start_date", "").strip()
+                end_raw = request.POST.get("end_date", "").strip()
 
-                # Branch: date-range provided → export all statuses in range, no updates
-                if start_date or end_date:
-                    qs = models.MTNTransaction.objects.all()
+                start_dt = _parse_frontend_dt(start_raw)
+                end_dt = _parse_frontend_dt(end_raw, is_end=True)
 
-                    if start_date:
-                        start_dt = make_aware(parse_datetime(start_date))
+                date_range_supplied = bool(start_dt or end_dt)
+
+                # ------------------------------------------------------------------
+                # 1. Build the queryset
+                # ------------------------------------------------------------------
+                qs = models.MTNTransaction.objects.all()
+
+                if date_range_supplied:
+                    if start_dt:
                         qs = qs.filter(transaction_date__gte=start_dt)
-                    if end_date:
-                        end_dt = make_aware(parse_datetime(end_date))
+                    if end_dt:
                         qs = qs.filter(transaction_date__lte=end_dt)
-
-                    # order by date desc for readability
-                    qs = qs.order_by('-transaction_date')
-
-                    should_update = False
-
-                # No date-range → export only pending, marking them Processing
+                    should_mark_processing = False
                 else:
-                    qs = (
-                        models.MTNTransaction.objects
-                        .filter(transaction_status="Pending")
-                        .annotate(
-                            offer_value=Cast(
-                                Substr('offer', 1, Length('offer') - 2),
-                                FloatField()
-                            )
-                        )
-                        .order_by('-offer_value')
-                    )
-                    should_update = True
+                    qs = qs.filter(transaction_status="Pending")
+                    should_mark_processing = True
 
-                # build workbook
+                # apply offer annotation for consistent ordering
+                qs = qs.annotate(
+                    offer_value=Cast(Substr("offer", 1, Length("offer") - 2), FloatField())
+                ).order_by("-transaction_date")
+
+                if not qs.exists():
+                    messages.warning(request, "No transactions match the selected criteria.")
+                    return redirect("mtn_admin", status=status)
+
+                # ------------------------------------------------------------------
+                # 2. Create the workbook
+                # ------------------------------------------------------------------
                 wb = Workbook()
                 ws = wb.active
                 ws.title = "MTN Transactions"
-                ws.append(["RECIPIENT", "DATA (GB)", "STATUS", "DATE"])  # add columns as you like
+                ws.append(["RECIPIENT", "DATA (GB)", "STATUS", "DATE"])
 
                 for txn in qs:
                     recipient = f"0{txn.bundle_number}"
-                    mb = float(txn.offer.replace('MB', ''))
+                    mb = float(txn.offer.replace("MB", ""))
                     gb = round(mb / 1000, 2)
 
                     ws.append([
                         recipient,
                         gb,
                         txn.transaction_status,
-                        txn.transaction_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        timezone.localtime(txn.transaction_date).strftime("%Y-%m-%d %H:%M:%S"),
                     ])
 
-                    if should_update:
+                    if should_mark_processing:
                         txn.transaction_status = "Processing"
-                        txn.save()
+                        txn.save(update_fields=["transaction_status"])
 
-                # stream back XLSX
+                # ------------------------------------------------------------------
+                # 3. Stream the XLSX to the browser
+                # ------------------------------------------------------------------
                 buffer = BytesIO()
                 wb.save(buffer)
                 buffer.seek(0)
+
                 filename = f"MTNTransactions_{datetime.now():%Y-%m-%d_%H-%M-%S}.xlsx"
                 response = HttpResponse(
                     buffer.getvalue(),
-                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
-                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response["Content-Disposition"] = f'attachment; filename="{filename}"'
                 return response
 
-        except Exception as e:
-            messages.error(request, f"Export failed ({e}). No transactions were updated.")
-            return redirect('mtn_admin', status=status)
+        except Exception as exc:
+            messages.error(request, f"Export failed ({exc}). No transactions were updated.")
+            return redirect("mtn_admin", status=status)
 
-    # GET: show up to 800 of whichever status you're viewing
-    all_txns = (
+    # ----------------------------------------------------------------------
+    #  GET  →  render the table
+    # ----------------------------------------------------------------------
+    txns = (
         models.MTNTransaction.objects
         .filter(transaction_status=status)
-        .order_by('-transaction_date')[:800]
+        .order_by("-transaction_date")[:800]
     )
     return render(
         request,
         "layouts/services/mtn_admin.html",
-        {'txns': all_txns, 'status': status}
+        {"txns": txns, "status": status},
     )
 
 
@@ -1740,7 +1772,8 @@ def paystack_webhook(request):
                         elif user.status == "Agent":
                             bundle = models.AgentIshareBundlePrice.objects.get(price=float(real_amount)).bundle_volume
                         elif user.status == "Super Agent":
-                            bundle = models.SuperAgentIshareBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                            bundle = models.SuperAgentIshareBundlePrice.objects.get(
+                                price=float(real_amount)).bundle_volume
                         else:
                             bundle = models.IshareBundlePrice.objects.get(price=float(real_amount)).bundle_volume
 
@@ -1794,7 +1827,8 @@ def paystack_webhook(request):
                                         'message': sms_message
                                     }
 
-                                    response = requests.request('POST', url=sms_url, params=sms_body, headers=sms_headers)
+                                    response = requests.request('POST', url=sms_url, params=sms_body,
+                                                                headers=sms_headers)
 
                                     print(response.text)
                                     return HttpResponse(status=200)
@@ -1912,7 +1946,8 @@ def paystack_webhook(request):
                         elif user.status == "Agent":
                             bundle = models.AgentBigTimeBundlePrice.objects.get(price=float(real_amount)).bundle_volume
                         elif user.status == "Super Agent":
-                            bundle = models.SuperAgentBigTimeBundlePrice.objects.get(price=float(real_amount)).bundle_volume
+                            bundle = models.SuperAgentBigTimeBundlePrice.objects.get(
+                                price=float(real_amount)).bundle_volume
                         else:
                             bundle = models.BigTimeBundlePrice.objects.get(price=float(real_amount)).bundle_volume
 
@@ -2108,7 +2143,8 @@ def paystack_webhook(request):
                                               f"Thank you for using GH BAY."
 
                                 # user.phone or receiver or whichever phone number you want
-                                final_phone_number = f"233{user.phone[1:]}" if user.phone.startswith('0') else user.phone
+                                final_phone_number = f"233{user.phone[1:]}" if user.phone.startswith(
+                                    '0') else user.phone
 
                                 sms_body = {
                                     'recipient': final_phone_number,
@@ -2137,7 +2173,8 @@ def cancel_mtn_transaction(request, pk, net):
     if net == "mtn":
         print("mtn selected")
         try:
-            transaction_to_be_canceled = models.MTNTransaction.objects.get(id=pk, user=user, transaction_status="Pending")
+            transaction_to_be_canceled = models.MTNTransaction.objects.get(id=pk, user=user,
+                                                                           transaction_status="Pending")
         except Exception as e:
             print(e)
             messages.info(request, "Could not cancel transaction")
@@ -2162,7 +2199,6 @@ def cancel_mtn_transaction(request, pk, net):
             return redirect('telecel-history')
     else:
         return redirect('history')
-
 
     try:
         with transaction.atomic():
@@ -2246,14 +2282,3 @@ def password_reset_request(request):
     password_reset_form = PasswordResetForm()
     return render(request=request, template_name="password/password_reset.html",
                   context={"password_reset_form": password_reset_form})
-
-
-
-
-
-
-
-
-
-
-

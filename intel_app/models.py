@@ -60,6 +60,7 @@ class AdminInfo(models.Model):
         ("Noble", "Noble")
     )
     ishare_source = models.CharField(max_length=300, default="Geosams", choices=ishare_choices)
+    send_sms_for_forex = models.BooleanField(default=False)
 
 
 class IShareBundleTransaction(models.Model):

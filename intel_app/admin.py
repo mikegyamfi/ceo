@@ -39,9 +39,11 @@ class IShareBundleTransactionAdmin(admin.ModelAdmin):
     search_fields = ['reference', 'bundle_number', 'user__username', ]
 
 
-class MTNTransactionAdmin(admin.ModelAdmin):
+class MTNTransactionAdmin(admin.ModelAdmin, ExportActionMixin):
     list_display = ['user', 'bundle_number', 'offer', 'reference', 'transaction_status', 'transaction_date']
     search_fields = ['reference', 'bundle_number', 'user__username']
+    list_filter = ['user']
+
 
 
 class PaymentAdmin(admin.ModelAdmin):
